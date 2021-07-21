@@ -438,7 +438,7 @@ class FetchStrategyBuilder {
         );
       }
 
-      final bool isRetriableFailure = (failure.httpStatusCode != null &&
+      final bool isRetriableFailure = (failure.httpStatusCode == null ||
               transientHttpStatusCodePredicate(failure.httpStatusCode!)) ||
           failure.originalException is io.SocketException;
 
