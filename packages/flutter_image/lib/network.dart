@@ -10,13 +10,13 @@
 library network;
 
 import 'dart:async';
-import 'dart:io' as io;
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 
 /// Fetches the image from the given URL, associating it with the given scale.
 ///
@@ -35,7 +35,7 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   });
 
   /// The HTTP client used to download images.
-  static final io.HttpClient _client = io.HttpClient();
+  static final http.Client _client = http.Client();
 
   /// The URL from which the image will be fetched.
   final String url;
@@ -136,18 +136,11 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
 
     while (!instructions.shouldGiveUp) {
       attemptCount += 1;
-      io.HttpClientRequest? request;
+
       try {
-        request = await _client
-            .getUrl(instructions.uri)
+        final http.Response response = await _client
+            .get(instructions.uri, headers: headers?.cast<String, String>())
             .timeout(instructions.timeout);
-
-        headers?.forEach((String key, Object value) {
-          request?.headers.add(key, value);
-        });
-
-        final io.HttpClientResponse response =
-            await request.close().timeout(instructions.timeout);
 
         if (response.statusCode != 200) {
           throw FetchFailure._(
@@ -157,14 +150,15 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
           );
         }
 
-        final _Uint8ListBuilder builder = await response
-            .fold(
-              _Uint8ListBuilder(),
-              (_Uint8ListBuilder buffer, List<int> bytes) => buffer..add(bytes),
-            )
-            .timeout(instructions.timeout);
+        // final _Uint8ListBuilder builder = await response
+        //     .fold(
+        //       _Uint8ListBuilder(),
+        //       (_Uint8ListBuilder buffer, List<int> bytes) => buffer..add(bytes),
+        //     )
+        //     .timeout(instructions.timeout);
 
-        final Uint8List bytes = builder.data;
+        // final Uint8List bytes = builder.data;
+        final Uint8List bytes = response.bodyBytes;
 
         if (bytes.lengthInBytes == 0) {
           throw FetchFailure._(
@@ -181,7 +175,6 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
           scale: key.scale,
         );
       } catch (error) {
-        request?.close();
         lastFailure = error is FetchFailure
             ? error
             : FetchFailure._(
@@ -440,7 +433,7 @@ class FetchStrategyBuilder {
 
       final bool isRetriableFailure = (failure.httpStatusCode == null ||
               transientHttpStatusCodePredicate(failure.httpStatusCode!)) ||
-          failure.originalException is io.SocketException;
+          failure.originalException is http.ClientException;
 
       // If cannot retry, give up.
       if (!isRetriableFailure || // retrying will not help
