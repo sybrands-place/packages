@@ -8,12 +8,17 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 import com.example.android_unit_tests.Primitive.PrimitiveFlutterApi;
+import com.example.android_unit_tests.Primitive.PrimitiveHostApi;
 import io.flutter.plugin.common.BinaryMessenger;
+import io.flutter.plugin.common.MessageCodec;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class PrimitiveTest {
   private static BinaryMessenger makeMockBinaryMessenger() {
@@ -23,7 +28,11 @@ public class PrimitiveTest {
               ByteBuffer message = invocation.getArgument(1);
               BinaryMessenger.BinaryReply reply = invocation.getArgument(2);
               message.position(0);
-              reply.reply(message);
+              ArrayList<Object> args =
+                  (ArrayList<Object>) PrimitiveFlutterApi.getCodec().decodeMessage(message);
+              ByteBuffer replyData = PrimitiveFlutterApi.getCodec().encodeMessage(args.get(0));
+              replyData.position(0);
+              reply.reply(replyData);
               return null;
             })
         .when(binaryMessenger)
@@ -37,12 +46,38 @@ public class PrimitiveTest {
     PrimitiveFlutterApi api = new PrimitiveFlutterApi(binaryMessenger);
     boolean[] didCall = {false};
     api.anInt(
-        1,
-        (Integer result) -> {
+        1L,
+        (Long result) -> {
           didCall[0] = true;
-          assertEquals(result, (Integer) 1);
+          assertEquals(result, (Long) 1L);
         });
     assertTrue(didCall[0]);
+  }
+
+  @Test
+  public void primitiveIntHostApi() {
+    PrimitiveHostApi mockApi = mock(PrimitiveHostApi.class);
+    when(mockApi.anInt(1L)).thenReturn(1L);
+    BinaryMessenger binaryMessenger = mock(BinaryMessenger.class);
+    PrimitiveHostApi.setup(binaryMessenger, mockApi);
+    ArgumentCaptor<BinaryMessenger.BinaryMessageHandler> handler =
+        ArgumentCaptor.forClass(BinaryMessenger.BinaryMessageHandler.class);
+    verify(binaryMessenger)
+        .setMessageHandler(eq("dev.flutter.pigeon.PrimitiveHostApi.anInt"), handler.capture());
+    MessageCodec<Object> codec = PrimitiveHostApi.getCodec();
+    ByteBuffer message = codec.encodeMessage(new ArrayList<Object>(Arrays.asList((Integer) 1)));
+    message.rewind();
+    handler
+        .getValue()
+        .onMessage(
+            message,
+            (bytes) -> {
+              bytes.rewind();
+              @SuppressWarnings("unchecked")
+              Map<String, Object> wrapped = (Map<String, Object>) codec.decodeMessage(bytes);
+              assertTrue(wrapped.containsKey("result"));
+              assertEquals(1L, ((Long) wrapped.get("result")).longValue());
+            });
   }
 
   @Test
@@ -94,7 +129,7 @@ public class PrimitiveTest {
     boolean[] didCall = {false};
     api.aMap(
         Collections.singletonMap("hello", 1),
-        (Map result) -> {
+        (Map<Object, Object> result) -> {
           didCall[0] = true;
           assertEquals(result, Collections.singletonMap("hello", 1));
         });
@@ -108,7 +143,7 @@ public class PrimitiveTest {
     boolean[] didCall = {false};
     api.aList(
         Collections.singletonList("hello"),
-        (List result) -> {
+        (List<Object> result) -> {
           didCall[0] = true;
           assertEquals(result, Collections.singletonList("hello"));
         });

@@ -13,16 +13,20 @@ import 'package:analyzer/dart/analysis/analysis_context_collection.dart'
 import 'package:analyzer/dart/analysis/results.dart' show ParsedUnitResult;
 import 'package:analyzer/dart/analysis/session.dart' show AnalysisSession;
 import 'package:analyzer/dart/ast/ast.dart' as dart_ast;
-import 'package:analyzer/dart/ast/ast.dart' show CompilationUnit;
+import 'package:analyzer/dart/ast/syntactic_entity.dart'
+    as dart_ast_syntactic_entity;
 import 'package:analyzer/dart/ast/visitor.dart' as dart_ast_visitor;
 import 'package:analyzer/error/error.dart' show AnalysisError;
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
+import 'package:pigeon/cpp_generator.dart';
 import 'package:pigeon/generator_tools.dart';
 import 'package:pigeon/java_generator.dart';
 
 import 'ast.dart';
+import 'ast_generator.dart';
 import 'dart_generator.dart';
+import 'generator_tools.dart' as generator_tools;
 import 'objc_generator.dart';
 
 class _Asynchronous {
@@ -78,6 +82,46 @@ class FlutterApi {
   const FlutterApi();
 }
 
+/// Metadata to annotation methods to control the selector used for objc output.
+/// The number of components in the provided selector must match the number of
+/// arguments in the annotated method.
+/// For example:
+///   @ObjcSelector('divideValue:by:') double divide(int x, int y);
+class ObjCSelector {
+  /// Constructor.
+  const ObjCSelector(this.value);
+
+  /// The string representation of the selector.
+  final String value;
+}
+
+/// Type of TaskQueue which determines how handlers are dispatched for
+/// HostApi's.
+enum TaskQueueType {
+  /// Handlers are invoked serially on the default thread. This is the value if
+  /// unspecified.
+  serial,
+
+  /// Handlers are invoked serially on a background thread.
+  serialBackgroundThread,
+
+  // TODO(gaaclarke): Add support for concurrent task queues.
+  // /// Handlers are invoked concurrently on a background thread.
+  // concurrentBackgroundThread,
+}
+
+/// Metadata annotation to control how handlers are dispatched for HostApi's.
+/// Note that the TaskQueue API might not be available on the target version of
+/// Flutter, see also:
+/// https://docs.flutter.dev/development/platform-integration/platform-channels.
+class TaskQueue {
+  /// The constructor for a TaskQueue.
+  const TaskQueue({required this.type});
+
+  /// The type of the TaskQueue.
+  final TaskQueueType type;
+}
+
 /// Represents an error as a result of parsing and generating code.
 class Error {
   /// Parametric constructor for Error.
@@ -114,8 +158,14 @@ class PigeonOptions {
       this.objcOptions,
       this.javaOut,
       this.javaOptions,
+      this.cppHeaderOut,
+      this.cppSourceOut,
+      this.cppOptions,
       this.dartOptions,
-      this.copyrightHeader});
+      this.copyrightHeader,
+      this.oneLanguage,
+      this.astOut,
+      this.debugGenerators});
 
   /// Path to the file which will be processed.
   final String? input;
@@ -141,11 +191,29 @@ class PigeonOptions {
   /// Options that control how Java will be generated.
   final JavaOptions? javaOptions;
 
+  /// Path to the ".h" C++ file that will be generated.
+  final String? cppHeaderOut;
+
+  /// Path to the ".cpp" C++ file that will be generated.
+  final String? cppSourceOut;
+
+  /// Options that control how C++ will be generated.
+  final CppOptions? cppOptions;
+
   /// Options that control how Dart will be generated.
   final DartOptions? dartOptions;
 
   /// Path to a copyright header that will get prepended to generated code.
   final String? copyrightHeader;
+
+  /// If Pigeon allows generating code for one language.
+  final bool? oneLanguage;
+
+  /// Path to AST debugging output.
+  final String? astOut;
+
+  /// True means print out line number of generators in comments at newlines.
+  final bool? debugGenerators;
 
   /// Creates a [PigeonOptions] from a Map representation where:
   /// `x = PigeonOptions.fromMap(x.toMap())`.
@@ -163,10 +231,19 @@ class PigeonOptions {
       javaOptions: map.containsKey('javaOptions')
           ? JavaOptions.fromMap((map['javaOptions'] as Map<String, Object>?)!)
           : null,
+      cppHeaderOut: map['experimental_cppHeaderOut'] as String?,
+      cppSourceOut: map['experimental_cppSourceOut'] as String?,
+      cppOptions: map.containsKey('experimental_cppOptions')
+          ? CppOptions.fromMap(
+              (map['experimental_cppOptions'] as Map<String, Object>?)!)
+          : null,
       dartOptions: map.containsKey('dartOptions')
           ? DartOptions.fromMap((map['dartOptions'] as Map<String, Object>?)!)
           : null,
       copyrightHeader: map['copyrightHeader'] as String?,
+      oneLanguage: map['oneLanguage'] as bool?,
+      astOut: map['astOut'] as String?,
+      debugGenerators: map['debugGenerators'] as bool?,
     );
   }
 
@@ -182,8 +259,14 @@ class PigeonOptions {
       if (objcOptions != null) 'objcOptions': objcOptions!.toMap(),
       if (javaOut != null) 'javaOut': javaOut!,
       if (javaOptions != null) 'javaOptions': javaOptions!.toMap(),
+      if (cppHeaderOut != null) 'experimental_cppHeaderOut': cppHeaderOut!,
+      if (cppSourceOut != null) 'experimental_cppSourceOut': cppSourceOut!,
+      if (cppOptions != null) 'experimental_cppOptions': cppOptions!.toMap(),
       if (dartOptions != null) 'dartOptions': dartOptions!.toMap(),
       if (copyrightHeader != null) 'copyrightHeader': copyrightHeader!,
+      if (astOut != null) 'astOut': astOut!,
+      if (oneLanguage != null) 'oneLanguage': oneLanguage!,
+      if (debugGenerators != null) 'debugGenerators': debugGenerators!,
     };
     return result;
   }
@@ -253,6 +336,35 @@ abstract class Generator {
   /// Write the generated code described in [root] to [sink] using the
   /// [options].
   void generate(StringSink sink, PigeonOptions options, Root root);
+
+  /// Generates errors that would only be appropriate for this [Generator]. For
+  /// example, maybe a certain feature isn't implemented in a [Generator] yet.
+  List<Error> validate(PigeonOptions options, Root root);
+}
+
+DartOptions _dartOptionsWithCopyrightHeader(
+    DartOptions? dartOptions, String? copyrightHeader) {
+  dartOptions = dartOptions ?? const DartOptions();
+  return dartOptions.merge(DartOptions(
+      copyrightHeader:
+          copyrightHeader != null ? _lineReader(copyrightHeader) : null));
+}
+
+/// A [Generator] that generates the AST.
+class AstGenerator implements Generator {
+  /// Constructor for [AstGenerator].
+  const AstGenerator();
+
+  @override
+  void generate(StringSink sink, PigeonOptions options, Root root) {
+    generateAst(root, sink);
+  }
+
+  @override
+  IOSink? shouldGenerate(PigeonOptions options) => _openSink(options.astOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
 }
 
 /// A [Generator] that generates Dart source code.
@@ -262,16 +374,16 @@ class DartGenerator implements Generator {
 
   @override
   void generate(StringSink sink, PigeonOptions options, Root root) {
-    final DartOptions dartOptions = options.dartOptions ?? const DartOptions();
-    final DartOptions dartOptionsWithHeader = dartOptions.merge(DartOptions(
-        copyrightHeader: options.copyrightHeader != null
-            ? _lineReader(options.copyrightHeader!)
-            : null));
+    final DartOptions dartOptionsWithHeader = _dartOptionsWithCopyrightHeader(
+        options.dartOptions, options.copyrightHeader);
     generateDart(dartOptionsWithHeader, root, sink);
   }
 
   @override
   IOSink? shouldGenerate(PigeonOptions options) => _openSink(options.dartOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
 }
 
 /// A [Generator] that generates Dart test source code.
@@ -285,8 +397,10 @@ class DartTestGenerator implements Generator {
       _posixify(options.dartOut!),
       from: _posixify(path.dirname(options.dartTestOut!)),
     );
+    final DartOptions dartOptionsWithHeader = _dartOptionsWithCopyrightHeader(
+        options.dartOptions, options.copyrightHeader);
     generateTestDart(
-      options.dartOptions ?? const DartOptions(),
+      dartOptionsWithHeader,
       root,
       sink,
       mainPath,
@@ -295,12 +409,15 @@ class DartTestGenerator implements Generator {
 
   @override
   IOSink? shouldGenerate(PigeonOptions options) {
-    if (options.dartTestOut != null && options.dartOut != null) {
+    if (options.dartTestOut != null) {
       return _openSink(options.dartTestOut);
     } else {
       return null;
     }
   }
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
 }
 
 /// A [Generator] that generates Objective-C header code.
@@ -321,6 +438,10 @@ class ObjcHeaderGenerator implements Generator {
   @override
   IOSink? shouldGenerate(PigeonOptions options) =>
       _openSink(options.objcHeaderOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) =>
+      validateObjc(options.objcOptions!, root);
 }
 
 /// A [Generator] that generates Objective-C source code.
@@ -341,6 +462,9 @@ class ObjcSourceGenerator implements Generator {
   @override
   IOSink? shouldGenerate(PigeonOptions options) =>
       _openSink(options.objcSourceOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
 }
 
 /// A [Generator] that generates Java source code.
@@ -362,34 +486,107 @@ class JavaGenerator implements Generator {
 
   @override
   IOSink? shouldGenerate(PigeonOptions options) => _openSink(options.javaOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
+}
+
+/// A [Generator] that generates C++ header code.
+class CppHeaderGenerator implements Generator {
+  /// Constructor for [CppHeaderGenerator].
+  const CppHeaderGenerator();
+
+  @override
+  void generate(StringSink sink, PigeonOptions options, Root root) {
+    final CppOptions cppOptions = options.cppOptions ?? const CppOptions();
+    final CppOptions cppOptionsWithHeader = cppOptions.merge(CppOptions(
+        copyrightHeader: options.copyrightHeader != null
+            ? _lineReader(options.copyrightHeader!)
+            : null));
+    generateCppHeader(path.basenameWithoutExtension(options.cppHeaderOut!),
+        cppOptionsWithHeader, root, sink);
+  }
+
+  @override
+  IOSink? shouldGenerate(PigeonOptions options) =>
+      _openSink(options.cppHeaderOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) =>
+      validateCpp(options.cppOptions!, root);
+}
+
+/// A [Generator] that generates C++ source code.
+class CppSourceGenerator implements Generator {
+  /// Constructor for [CppSourceGenerator].
+  const CppSourceGenerator();
+
+  @override
+  void generate(StringSink sink, PigeonOptions options, Root root) {
+    final CppOptions cppOptions = options.cppOptions ?? const CppOptions();
+    final CppOptions cppOptionsWithHeader = cppOptions.merge(CppOptions(
+        copyrightHeader: options.copyrightHeader != null
+            ? _lineReader(options.copyrightHeader!)
+            : null));
+    generateCppSource(cppOptionsWithHeader, root, sink);
+  }
+
+  @override
+  IOSink? shouldGenerate(PigeonOptions options) =>
+      _openSink(options.cppSourceOut);
+
+  @override
+  List<Error> validate(PigeonOptions options, Root root) => <Error>[];
+}
+
+dart_ast.Annotation? _findMetadata(
+    dart_ast.NodeList<dart_ast.Annotation> metadata, String query) {
+  final Iterable<dart_ast.Annotation> annotations = metadata
+      .where((dart_ast.Annotation element) => element.name.name == query);
+  return annotations.isEmpty ? null : annotations.first;
 }
 
 bool _hasMetadata(
     dart_ast.NodeList<dart_ast.Annotation> metadata, String query) {
-  return metadata
-      .where((dart_ast.Annotation element) => element.name.name == query)
-      .isNotEmpty;
+  return _findMetadata(metadata, query) != null;
+}
+
+extension _ObjectAs on Object {
+  /// A convenience for chaining calls with casts.
+  T? asNullable<T>() => this as T?;
 }
 
 List<Error> _validateAst(Root root, String source) {
   final List<Error> result = <Error>[];
   final List<String> customClasses =
       root.classes.map((Class x) => x.name).toList();
-  final List<String> customEnums = root.enums.map((Enum x) => x.name).toList();
+  final Iterable<String> customEnums = root.enums.map((Enum x) => x.name);
   for (final Class klass in root.classes) {
-    for (final Field field in klass.fields) {
-      if (field.typeArguments != null) {
+    for (final NamedType field in klass.fields) {
+      if (field.type.typeArguments != null) {
+        for (final TypeDeclaration typeArgument in field.type.typeArguments) {
+          if (!typeArgument.isNullable) {
+            result.add(Error(
+              message:
+                  'Generic type arguments must be nullable in field "${field.name}" in class "${klass.name}".',
+              lineNumber: _calculateLineNumberNullable(source, field.offset),
+            ));
+          }
+          if (customEnums.contains(typeArgument.baseName)) {
+            result.add(Error(
+              message:
+                  'Enum types aren\'t supported in type arguments in "${field.name}" in class "${klass.name}".',
+              lineNumber: _calculateLineNumberNullable(source, field.offset),
+            ));
+          }
+        }
+      }
+      if (!(validTypes.contains(field.type.baseName) ||
+          customClasses.contains(field.type.baseName) ||
+          customEnums.contains(field.type.baseName))) {
         result.add(Error(
           message:
-              'Unsupported datatype:"${field.dataType}" in class "${klass.name}". Generic fields aren\'t yet supported (https://github.com/flutter/flutter/issues/63468).',
-          lineNumber: _calculateLineNumberNullable(source, field.offset),
-        ));
-      } else if (!(validTypes.contains(field.dataType) ||
-          customClasses.contains(field.dataType) ||
-          customEnums.contains(field.dataType))) {
-        result.add(Error(
-          message:
-              'Unsupported datatype:"${field.dataType}" in class "${klass.name}".',
+              'Unsupported datatype:"${field.type.baseName}" in class "${klass.name}".',
           lineNumber: _calculateLineNumberNullable(source, field.offset),
         ));
       }
@@ -397,17 +594,44 @@ List<Error> _validateAst(Root root, String source) {
   }
   for (final Api api in root.apis) {
     for (final Method method in api.methods) {
-      if (method.isReturnNullable) {
+      if (api.location == ApiLocation.flutter &&
+          method.arguments.isNotEmpty &&
+          method.arguments.any((NamedType element) =>
+              customEnums.contains(element.type.baseName))) {
         result.add(Error(
           message:
-              'Nullable return types types aren\'t supported for Pigeon methods: "${method.argType}" in API: "${api.name}" method: "${method.name}"',
+              'Enums aren\'t yet supported for primitive arguments in FlutterApis: "${method.arguments[0]}" in API: "${api.name}" method: "${method.name}" (https://github.com/flutter/flutter/issues/87307)',
           lineNumber: _calculateLineNumberNullable(source, method.offset),
         ));
       }
-      if (method.isArgNullable) {
+      if (customEnums.contains(method.returnType.baseName)) {
         result.add(Error(
           message:
-              'Nullable argument types aren\'t supported for Pigeon methods: "${method.argType}" in API: "${api.name}" method: "${method.name}"',
+              'Enums aren\'t yet supported for primitive return types: "${method.returnType}" in API: "${api.name}" method: "${method.name}" (https://github.com/flutter/flutter/issues/87307)',
+        ));
+      }
+      for (final NamedType unnamedType in method.arguments
+          .where((NamedType element) => element.type.baseName.isEmpty)) {
+        result.add(Error(
+          message:
+              'Arguments must specify their type in method "${method.name}" in API: "${api.name}"',
+          lineNumber: _calculateLineNumberNullable(source, unnamedType.offset),
+        ));
+      }
+      if (method.objcSelector.isNotEmpty) {
+        if (':'.allMatches(method.objcSelector).length !=
+            method.arguments.length) {
+          result.add(Error(
+            message:
+                'Invalid selector, expected ${method.arguments.length} arguments.',
+            lineNumber: _calculateLineNumberNullable(source, method.offset),
+          ));
+        }
+      }
+      if (method.taskQueueType != TaskQueueType.serial &&
+          api.location != ApiLocation.host) {
+        result.add(Error(
+          message: 'Unsupported TaskQueue specification on ${method.name}',
           lineNumber: _calculateLineNumberNullable(source, method.offset),
         ));
       }
@@ -459,43 +683,43 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
     _storeCurrentApi();
     _storeCurrentClass();
 
-    final Set<String> referencedTypes = <String>{};
-    for (final Api api in _apis) {
-      for (final Method method in api.methods) {
-        referencedTypes.add(method.argType);
-        referencedTypes.add(method.returnType);
-      }
-    }
-
-    final List<String> classesToCheck = List<String>.from(referencedTypes);
-    while (classesToCheck.isNotEmpty) {
-      final String next = classesToCheck.last;
-      classesToCheck.removeLast();
-      final Class aClass = _classes.firstWhere((Class x) => x.name == next,
-          orElse: () => Class(name: '', fields: <Field>[]));
-      for (final Field field in aClass.fields) {
-        if (!referencedTypes.contains(field.dataType) &&
-            !validTypes.contains(field.dataType)) {
-          referencedTypes.add(field.dataType);
-          classesToCheck.add(field.dataType);
-        }
-      }
-    }
-
+    final Map<TypeDeclaration, List<int>> referencedTypes =
+        getReferencedTypes(_apis, _classes);
+    final Set<String> referencedTypeNames =
+        referencedTypes.keys.map((TypeDeclaration e) => e.baseName).toSet();
     final List<Class> referencedClasses = List<Class>.from(_classes);
     referencedClasses
-        .removeWhere((Class x) => !referencedTypes.contains(x.name));
+        .removeWhere((Class x) => !referencedTypeNames.contains(x.name));
 
     final List<Enum> referencedEnums = List<Enum>.from(_enums);
-    referencedEnums.removeWhere(
-        (final Enum anEnum) => !referencedTypes.contains(anEnum.name));
-
     final Root completeRoot =
         Root(apis: _apis, classes: referencedClasses, enums: referencedEnums);
 
     final List<Error> validateErrors = _validateAst(completeRoot, source);
     final List<Error> totalErrors = List<Error>.from(_errors);
     totalErrors.addAll(validateErrors);
+
+    for (final MapEntry<TypeDeclaration, List<int>> element
+        in referencedTypes.entries) {
+      if (!referencedClasses
+              .map((Class e) => e.name)
+              .contains(element.key.baseName) &&
+          !referencedEnums
+              .map((Enum e) => e.name)
+              .contains(element.key.baseName) &&
+          !validTypes.contains(element.key.baseName) &&
+          !element.key.isVoid &&
+          element.key.baseName != 'dynamic' &&
+          element.key.baseName != 'Object' &&
+          element.key.baseName.isNotEmpty) {
+        final int? lineNumber = element.value.isEmpty
+            ? null
+            : _calculateLineNumber(source, element.value.first);
+        totalErrors.add(Error(
+            message: 'Unknown type: ${element.key.baseName}',
+            lineNumber: lineNumber));
+      }
+    }
 
     return ParseResults(
       root: totalErrors.isEmpty
@@ -528,6 +752,19 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
       return expression.value!;
     } else if (expression is dart_ast.BooleanLiteral) {
       return expression.value;
+    } else if (expression is dart_ast.ListLiteral) {
+      final List<dynamic> list = <dynamic>[];
+      for (final dart_ast.CollectionElement element in expression.elements) {
+        if (element is dart_ast.Expression) {
+          list.add(_expressionToMap(element));
+        } else {
+          _errors.add(Error(
+            message: 'expected Expression but found $element',
+            lineNumber: _calculateLineNumber(source, element.offset),
+          ));
+        }
+      }
+      return list;
     } else {
       _errors.add(Error(
         message:
@@ -547,6 +784,7 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
         lineNumber: _calculateLineNumber(source, node.offset),
       ));
     }
+    return null;
   }
 
   @override
@@ -606,39 +844,100 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
         );
       }
     } else {
-      _currentClass = Class(name: node.name.name, fields: <Field>[]);
+      _currentClass = Class(name: node.name.name, fields: <NamedType>[]);
     }
 
     node.visitChildren(this);
     return null;
   }
 
+  NamedType formalParameterToField(dart_ast.FormalParameter parameter) {
+    final dart_ast.NamedType? namedType =
+        getFirstChildOfType<dart_ast.NamedType>(parameter);
+    if (namedType != null) {
+      final String argTypeBaseName = namedType.name.name;
+      final bool isNullable = namedType.question != null;
+      final List<TypeDeclaration> argTypeArguments =
+          typeAnnotationsToTypeArguments(namedType.typeArguments);
+      return NamedType(
+          type: TypeDeclaration(
+              baseName: argTypeBaseName,
+              isNullable: isNullable,
+              typeArguments: argTypeArguments),
+          name: parameter.identifier?.name ?? '',
+          offset: parameter.offset);
+    } else {
+      return NamedType(
+        name: '',
+        type: const TypeDeclaration(baseName: '', isNullable: false),
+        offset: parameter.offset,
+      );
+    }
+  }
+
+  static T? getFirstChildOfType<T>(dart_ast.AstNode entity) {
+    for (final dart_ast_syntactic_entity.SyntacticEntity child
+        in entity.childEntities) {
+      if (child is T) {
+        return child as T;
+      }
+    }
+    return null;
+  }
+
+  T? _stringToEnum<T>(List<T> values, String? str) {
+    if (str == null) {
+      return null;
+    }
+    for (final T value in values) {
+      if (value.toString() == str) {
+        return value;
+      }
+    }
+    return null;
+  }
+
   @override
   Object? visitMethodDeclaration(dart_ast.MethodDeclaration node) {
     final dart_ast.FormalParameterList parameters = node.parameters!;
-    late String argType;
-    bool isNullable = false;
-    if (parameters.parameters.isEmpty) {
-      argType = 'void';
-    } else {
-      final dart_ast.FormalParameter firstParameter =
-          parameters.parameters.first;
-      final dart_ast.TypeName typeName = firstParameter.childEntities
-          // ignore: always_specify_types
-          .firstWhere((e) => e is dart_ast.TypeName) as dart_ast.TypeName;
-      argType = typeName.name.name;
-      isNullable = typeName.question != null;
-    }
+    final List<NamedType> arguments =
+        parameters.parameters.map(formalParameterToField).toList();
     final bool isAsynchronous = _hasMetadata(node.metadata, 'async');
+    final String objcSelector = _findMetadata(node.metadata, 'ObjCSelector')
+            ?.arguments
+            ?.arguments
+            .first
+            .asNullable<dart_ast.SimpleStringLiteral>()
+            ?.value ??
+        '';
+    final dart_ast.ArgumentList? taskQueueArguments =
+        _findMetadata(node.metadata, 'TaskQueue')?.arguments;
+    final String? taskQueueTypeName = taskQueueArguments == null
+        ? null
+        : getFirstChildOfType<dart_ast.NamedExpression>(taskQueueArguments)
+            ?.expression
+            .asNullable<dart_ast.PrefixedIdentifier>()
+            ?.name;
+    final TaskQueueType taskQueueType =
+        _stringToEnum(TaskQueueType.values, taskQueueTypeName) ??
+            TaskQueueType.serial;
     if (_currentApi != null) {
+      // Methods without named return types aren't supported.
+      final dart_ast.TypeAnnotation returnType = node.returnType!;
+      final dart_ast.SimpleIdentifier returnTypeIdentifier =
+          getFirstChildOfType<dart_ast.SimpleIdentifier>(returnType)!;
       _currentApi!.methods.add(Method(
           name: node.name.name,
-          returnType: node.returnType.toString(),
-          argType: argType,
-          isReturnNullable: node.returnType!.question != null,
-          isArgNullable: isNullable,
+          returnType: TypeDeclaration(
+              baseName: returnTypeIdentifier.name,
+              typeArguments: typeAnnotationsToTypeArguments(
+                  (returnType as dart_ast.NamedType).typeArguments),
+              isNullable: returnType.question != null),
+          arguments: arguments,
           isAsynchronous: isAsynchronous,
-          offset: node.offset));
+          objcSelector: objcSelector,
+          offset: node.offset,
+          taskQueueType: taskQueueType));
     } else if (_currentClass != null) {
       _errors.add(Error(
           message:
@@ -660,6 +959,22 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
     return null;
   }
 
+  List<TypeDeclaration> typeAnnotationsToTypeArguments(
+      dart_ast.TypeArgumentList? typeArguments) {
+    final List<TypeDeclaration> result = <TypeDeclaration>[];
+    if (typeArguments != null) {
+      for (final Object x in typeArguments.childEntities) {
+        if (x is dart_ast.NamedType) {
+          result.add(TypeDeclaration(
+              baseName: x.name.name,
+              isNullable: x.question != null,
+              typeArguments: typeAnnotationsToTypeArguments(x.typeArguments)));
+        }
+      }
+    }
+    return result;
+  }
+
   @override
   Object? visitFieldDeclaration(dart_ast.FieldDeclaration node) {
     if (_currentClass != null) {
@@ -679,26 +994,13 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
               lineNumber: _calculateLineNumber(source, node.offset)));
         } else {
           final dart_ast.TypeArgumentList? typeArguments = type.typeArguments;
-          _currentClass!.fields.add(Field(
-            name: node.fields.variables[0].name.name,
-            dataType: type.name.name,
-            isNullable: type.question != null,
-            // TODO(aaclarke): This probably has to be recursive at some point.
-            // ignore: prefer_null_aware_operators
-            typeArguments: typeArguments == null
-                ? null
-                : typeArguments.arguments
-                    .map((dart_ast.TypeAnnotation e) => Field(
-                          name: '',
-                          dataType: (e.childEntities.first
-                                  as dart_ast.SimpleIdentifier)
-                              .name,
-                          isNullable: e.question != null,
-                          offset: e.offset,
-                        ))
-                    .toList(),
-            offset: node.offset,
-          ));
+          _currentClass!.fields.add(NamedType(
+              type: TypeDeclaration(
+                  baseName: type.name.name,
+                  isNullable: type.question != null,
+                  typeArguments: typeAnnotationsToTypeArguments(typeArguments)),
+              name: node.fields.variables[0].name.name,
+              offset: node.offset));
         }
       } else {
         _errors.add(Error(
@@ -716,10 +1018,23 @@ class _RootBuilder extends dart_ast_visitor.RecursiveAstVisitor<Object?> {
 
   @override
   Object? visitConstructorDeclaration(dart_ast.ConstructorDeclaration node) {
-    final String type = _currentApi != null ? 'API classes' : 'data classes';
-    _errors.add(Error(
-        message: 'Constructors aren\'t supported in $type ("$node").',
-        lineNumber: _calculateLineNumber(source, node.offset)));
+    if (_currentApi != null) {
+      _errors.add(Error(
+          message: 'Constructors aren\'t supported in API classes ("$node").',
+          lineNumber: _calculateLineNumber(source, node.offset)));
+    } else {
+      if (node.body.beginToken.lexeme != ';') {
+        _errors.add(Error(
+            message:
+                'Constructor bodies aren\'t supported in data classes ("$node").',
+            lineNumber: _calculateLineNumber(source, node.offset)));
+      } else if (node.initializers.isNotEmpty) {
+        _errors.add(Error(
+            message:
+                'Constructor initializers aren\'t supported in data classes (use "this.fieldName") ("$node").',
+            lineNumber: _calculateLineNumber(source, node.offset)));
+      }
+    }
     node.visitChildren(this);
     return null;
   }
@@ -748,12 +1063,16 @@ class Pigeon {
 
   /// Reads the file located at [path] and generates [ParseResults] by parsing
   /// it.  [types] optionally filters out what datatypes are actually parsed.
-  ParseResults parseFile(String inputPath) {
+  /// [sdkPath] for specifying the Dart SDK path for
+  /// [AnalysisContextCollection].
+  ParseResults parseFile(String inputPath, {String? sdkPath}) {
     final List<String> includedPaths = <String>[
       path.absolute(path.normalize(inputPath))
     ];
-    final AnalysisContextCollection collection =
-        AnalysisContextCollection(includedPaths: includedPaths);
+    final AnalysisContextCollection collection = AnalysisContextCollection(
+      includedPaths: includedPaths,
+      sdkPath: sdkPath,
+    );
 
     final List<Error> compilationErrors = <Error>[];
     final _RootBuilder rootBuilder =
@@ -762,9 +1081,9 @@ class Pigeon {
       for (final String path in context.contextRoot.analyzedFiles()) {
         final AnalysisSession session = context.currentSession;
         final ParsedUnitResult result =
-            session.getParsedUnit2(path) as ParsedUnitResult;
+            session.getParsedUnit(path) as ParsedUnitResult;
         if (result.errors.isEmpty) {
-          final CompilationUnit unit = result.unit;
+          final dart_ast.CompilationUnit unit = result.unit;
           unit.accept(rootBuilder);
         } else {
           for (final AnalysisError error in result.errors) {
@@ -806,7 +1125,8 @@ options:
   static final ArgParser _argParser = ArgParser()
     ..addOption('input', help: 'REQUIRED: Path to pigeon file.')
     ..addOption('dart_out',
-        help: 'REQUIRED: Path to generated Dart source file (.dart).')
+        help: 'Path to generated Dart source file (.dart). '
+            'Required if one_language is not specified.')
     ..addOption('dart_test_out',
         help: 'Path to generated library for Dart tests, when using '
             '@HostApi(dartHostTestHandler:).')
@@ -815,16 +1135,28 @@ options:
     ..addOption('java_out', help: 'Path to generated Java file (.java).')
     ..addOption('java_package',
         help: 'The package that generated Java code will be in.')
-    ..addFlag('dart_null_safety',
-        help: 'Makes generated Dart code have null safety annotations',
-        defaultsTo: true)
+    ..addOption('experimental_cpp_header_out',
+        help: 'Path to generated C++ header file (.h). (experimental)')
+    ..addOption('experimental_cpp_source_out',
+        help: 'Path to generated C++ classes file (.cpp). (experimental)')
+    ..addOption('cpp_namespace',
+        help: 'The namespace that generated C++ code will be in.')
     ..addOption('objc_header_out',
         help: 'Path to generated Objective-C header file (.h).')
     ..addOption('objc_prefix',
         help: 'Prefix for generated Objective-C classes and protocols.')
     ..addOption('copyright_header',
         help:
-            'Path to file with copyright header to be prepended to generated code.');
+            'Path to file with copyright header to be prepended to generated code.')
+    ..addFlag('one_language',
+        help: 'Allow Pigeon to only generate code for one language.',
+        defaultsTo: false)
+    ..addOption('ast_out',
+        help:
+            'Path to generated AST debugging info. (Warning: format subject to change)')
+    ..addFlag('debug_generators',
+        help: 'Print the line number of the generator in comments at newlines.',
+        defaultsTo: false);
 
   /// Convert command-line arguments to [PigeonOptions].
   static PigeonOptions parseArgs(List<String> args) {
@@ -847,10 +1179,15 @@ options:
       javaOptions: JavaOptions(
         package: results['java_package'],
       ),
-      dartOptions: DartOptions(
-        isNullSafe: results['dart_null_safety'],
+      cppHeaderOut: results['experimental_cpp_header_out'],
+      cppSourceOut: results['experimental_cpp_source_out'],
+      cppOptions: CppOptions(
+        namespace: results['cpp_namespace'],
       ),
       copyrightHeader: results['copyright_header'],
+      oneLanguage: results['one_language'],
+      astOut: results['ast_out'],
+      debugGenerators: results['debug_generators'],
     );
     return opts;
   }
@@ -876,57 +1213,89 @@ options:
 
   /// The 'main' entrypoint used by the command-line tool.  [args] are the
   /// command-line arguments.  The optional parameter [generators] allows you to
-  /// customize the generators that pigeon will use.
+  /// customize the generators that pigeon will use. The optional parameter
+  /// [sdkPath] allows you to specify the Dart SDK path.
   static Future<int> run(List<String> args,
-      {List<Generator>? generators}) async {
+      {List<Generator>? generators, String? sdkPath}) async {
     final Pigeon pigeon = Pigeon.setup();
     PigeonOptions options = Pigeon.parseArgs(args);
+    if (options.debugGenerators ?? false) {
+      generator_tools.debugGenerators = true;
+    }
     final List<Generator> safeGenerators = generators ??
         <Generator>[
           const DartGenerator(),
           const JavaGenerator(),
+          const CppHeaderGenerator(),
+          const CppSourceGenerator(),
           const DartTestGenerator(),
           const ObjcHeaderGenerator(),
           const ObjcSourceGenerator(),
+          const AstGenerator(),
         ];
     _executeConfigurePigeon(options);
 
-    if (options.input == null || options.dartOut == null) {
+    if (options.input == null) {
       print(usage);
       return 0;
     }
 
+    final ParseResults parseResults =
+        pigeon.parseFile(options.input!, sdkPath: sdkPath);
+
     final List<Error> errors = <Error>[];
+    errors.addAll(parseResults.errors);
+
+    for (final Generator generator in safeGenerators) {
+      final IOSink? sink = generator.shouldGenerate(options);
+      if (sink != null) {
+        final List<Error> generatorErrors =
+            generator.validate(options, parseResults.root);
+        errors.addAll(generatorErrors);
+      }
+    }
+
+    if (errors.isNotEmpty) {
+      printErrors(errors
+          .map((Error err) => Error(
+              message: err.message,
+              filename: options.input,
+              lineNumber: err.lineNumber))
+          .toList());
+      return 1;
+    }
+
+    if (parseResults.pigeonOptions != null) {
+      options = PigeonOptions.fromMap(
+          mergeMaps(options.toMap(), parseResults.pigeonOptions!));
+    }
+
+    if (options.oneLanguage == false && options.dartOut == null) {
+      print(usage);
+      return 1;
+    }
+
     if (options.objcHeaderOut != null) {
       options = options.merge(PigeonOptions(
           objcOptions: options.objcOptions!.merge(
               ObjcOptions(header: path.basename(options.objcHeaderOut!)))));
     }
 
-    final ParseResults parseResults = pigeon.parseFile(options.input!);
-    if (parseResults.pigeonOptions != null) {
-      options = PigeonOptions.fromMap(
-          mergeMaps(options.toMap(), parseResults.pigeonOptions!));
+    if (options.cppHeaderOut != null) {
+      options = options.merge(PigeonOptions(
+          cppOptions: options.cppOptions!.merge(
+              CppOptions(header: path.basename(options.cppHeaderOut!)))));
     }
-    for (final Error err in parseResults.errors) {
-      errors.add(Error(
-          message: err.message,
-          filename: options.input,
-          lineNumber: err.lineNumber));
-    }
-    if (errors.isEmpty) {
-      for (final Generator generator in safeGenerators) {
-        final IOSink? sink = generator.shouldGenerate(options);
-        if (sink != null) {
-          generator.generate(sink, options, parseResults.root);
-          await sink.flush();
-        }
+
+    for (final Generator generator in safeGenerators) {
+      final IOSink? sink = generator.shouldGenerate(options);
+      if (sink != null) {
+        generator.generate(sink, options, parseResults.root);
+        await sink.flush();
       }
     }
 
-    printErrors(errors);
-
-    return errors.isNotEmpty ? 1 : 0;
+    return 0;
   }
 
   /// Print a list of errors to stderr.

@@ -1,3 +1,20 @@
+## 0.3.3+1
+
+* Migrates from `ui.hash*` to `Object.hash*`.
+
+## 0.3.3
+
+* Avoids dynamic calls in equality checks.
+
+## 0.3.2
+
+* Fix typos
+* Fix `unnecessary_import` lint errors.
+
+## 0.3.1
+
+* Add PaletteGenerator.fromByteData to allow creating palette from image byte data.
+
 ## 0.3.0
 
 * Migrated to null safety.

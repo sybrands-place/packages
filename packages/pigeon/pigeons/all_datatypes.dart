@@ -17,6 +17,9 @@ class Everything {
   List? aList;
   // ignore: always_specify_types
   Map? aMap;
+  List<List<bool?>?>? nestedList;
+  Map<String?, String?>? mapWithAnnotations;
+  Map<String?, Object?>? mapWithObject;
 }
 
 @HostApi()

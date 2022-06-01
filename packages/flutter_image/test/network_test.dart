@@ -137,26 +137,34 @@ void main() {
 }
 
 void assertThatImageLoadingFails(
-    NetworkImageWithRetry subject, List<FlutterErrorDetails> errorLog) {
-  subject
-      .load(subject, PaintingBinding.instance!.instantiateImageCodec)
-      .addListener(ImageStreamListener(
-        (ImageInfo image, bool synchronousCall) {},
-        onError: expectAsync2((Object error, StackTrace? _) {
-          expect(errorLog.single.exception, isInstanceOf<FetchFailure>());
-          expect(error, isInstanceOf<FetchFailure>());
-          expect(error, equals(errorLog.single.exception));
-        }),
-      ));
+  NetworkImageWithRetry subject,
+  List<FlutterErrorDetails> errorLog,
+) {
+  final ImageStreamCompleter completer = subject.load(
+    subject,
+    PaintingBinding.instance.instantiateImageCodec,
+  );
+  completer.addListener(ImageStreamListener(
+    (ImageInfo image, bool synchronousCall) {},
+    onError: expectAsync2((Object error, StackTrace? _) {
+      expect(errorLog.single.exception, isInstanceOf<FetchFailure>());
+      expect(error, isInstanceOf<FetchFailure>());
+      expect(error, equals(errorLog.single.exception));
+    }),
+  ));
 }
 
-void assertThatImageLoadingSucceeds(NetworkImageWithRetry subject) {
-  subject
-      .load(subject, PaintingBinding.instance!.instantiateImageCodec)
-      .addListener(
-    ImageStreamListener(expectAsync2((ImageInfo image, bool synchronousCall) {
+void assertThatImageLoadingSucceeds(
+  NetworkImageWithRetry subject,
+) {
+  final ImageStreamCompleter completer = subject.load(
+    subject,
+    PaintingBinding.instance.instantiateImageCodec,
+  );
+  completer.addListener(ImageStreamListener(
+    expectAsync2((ImageInfo image, bool synchronousCall) {
       expect(image.image.height, 1);
       expect(image.image.width, 1);
-    })),
-  );
+    }),
+  ));
 }

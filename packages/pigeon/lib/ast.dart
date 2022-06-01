@@ -2,6 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:collection/collection.dart' show ListEquality;
+import 'package:meta/meta.dart';
+import 'pigeon_lib.dart';
+
+final Function _listEquals = const ListEquality<dynamic>().equals;
+
 /// Enum that represents where an [Api] is located, on the host or Flutter.
 enum ApiLocation {
   /// The API is for calling functions defined on the host.
@@ -20,27 +26,21 @@ class Method extends Node {
   Method({
     required this.name,
     required this.returnType,
-    required this.argType,
-    this.isArgNullable = false,
+    required this.arguments,
     this.isAsynchronous = false,
-    this.isReturnNullable = false,
     this.offset,
+    this.objcSelector = '',
+    this.taskQueueType = TaskQueueType.serial,
   });
 
   /// The name of the method.
   String name;
 
   /// The data-type of the return value.
-  String returnType;
+  TypeDeclaration returnType;
 
-  /// True if the method can return a null value.
-  bool isReturnNullable;
-
-  /// The data-type of the argument.
-  String argType;
-
-  /// True if the argument has a null tag `?`.
-  bool isArgNullable;
+  /// The arguments passed into the [Method].
+  List<NamedType> arguments;
 
   /// Whether the receiver of this method is expected to return synchronously or not.
   bool isAsynchronous;
@@ -48,9 +48,17 @@ class Method extends Node {
   /// The offset in the source file where the field appears.
   int? offset;
 
+  /// An override for the generated objc selector (ex. "divideNumber:by:").
+  String objcSelector;
+
+  /// Specifies how handlers are dispatched with respect to threading.
+  TaskQueueType taskQueueType;
+
   @override
   String toString() {
-    return '(Api name:$name returnType:$returnType argType:$argType isAsynchronous:$isAsynchronous)';
+    final String objcSelectorStr =
+        objcSelector.isEmpty ? '' : ' objcSelector:$objcSelector';
+    return '(Method name:$name returnType:$returnType arguments:$arguments isAsynchronous:$isAsynchronous$objcSelectorStr)';
   }
 }
 
@@ -82,39 +90,88 @@ class Api extends Node {
   }
 }
 
-/// Represents a field on a [Class].
-class Field extends Node {
-  /// Parametric constructor for [Field].
-  Field({
-    required this.name,
-    required this.dataType,
+/// A specific instance of a type.
+@immutable
+class TypeDeclaration {
+  /// Constructor for [TypeDeclaration].
+  const TypeDeclaration({
+    required this.baseName,
     required this.isNullable,
-    this.typeArguments,
-    this.offset,
+    this.typeArguments = const <TypeDeclaration>[],
   });
 
-  /// The name of the field.
-  String name;
+  /// Void constructor.
+  const TypeDeclaration.voidDeclaration()
+      : baseName = 'void',
+        isNullable = false,
+        typeArguments = const <TypeDeclaration>[];
 
-  /// The data-type of the field (ex 'String' or 'int').
-  String dataType;
+  /// The base name of the [TypeDeclaration] (ex 'Foo' to 'Foo<Bar>?').
+  final String baseName;
 
-  /// The offset in the source file where the field appears.
-  int? offset;
+  /// Returns true if the declaration represents 'void'.
+  bool get isVoid => baseName == 'void';
 
-  /// True if the datatype is nullable (ex `int?`).
-  bool isNullable;
+  /// The type arguments to the entity (ex 'Bar' to 'Foo<Bar>?').
+  final List<TypeDeclaration> typeArguments;
 
-  /// Type parameters used for generics.
-  List<Field>? typeArguments;
+  /// True if the type is nullable.
+  final bool isNullable;
+
+  @override
+  int get hashCode {
+    // This has to be implemented because TypeDeclaration is used as a Key to a
+    // Map in generator_tools.dart.
+    int hash = 17;
+    hash = hash * 37 + baseName.hashCode;
+    hash = hash * 37 + isNullable.hashCode;
+    for (final TypeDeclaration typeArgument in typeArguments) {
+      hash = hash * 37 + typeArgument.hashCode;
+    }
+    return hash;
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other.runtimeType != runtimeType) {
+      return false;
+    } else {
+      return other is TypeDeclaration &&
+          baseName == other.baseName &&
+          isNullable == other.isNullable &&
+          _listEquals(typeArguments, other.typeArguments);
+    }
+  }
 
   @override
   String toString() {
-    return '(Field name:$name dataType:$dataType)';
+    final String typeArgumentsStr =
+        typeArguments.isEmpty ? '' : 'typeArguments:$typeArguments';
+    return '(TypeDeclaration baseName:$baseName isNullable:$isNullable$typeArgumentsStr)';
   }
 }
 
-/// Represents a class with [Field]s.
+/// Represents a named entity that has a type.
+class NamedType extends Node {
+  /// Parametric constructor for [NamedType].
+  NamedType({required this.name, required this.type, this.offset});
+
+  /// The name of the entity.
+  String name;
+
+  /// The type.
+  TypeDeclaration type;
+
+  /// The offset in the source file where the [NamedType] appears.
+  int? offset;
+
+  @override
+  String toString() {
+    return '(NamedType name:$name type:$type)';
+  }
+}
+
+/// Represents a class with fields.
 class Class extends Node {
   /// Parametric constructor for [Class].
   Class({
@@ -126,7 +183,7 @@ class Class extends Node {
   String name;
 
   /// All the fields contained in the class.
-  List<Field> fields;
+  List<NamedType> fields;
 
   @override
   String toString() {

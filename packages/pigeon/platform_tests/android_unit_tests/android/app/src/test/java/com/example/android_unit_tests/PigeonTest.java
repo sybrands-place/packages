@@ -10,6 +10,8 @@ import static org.mockito.Mockito.*;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MessageCodec;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -70,6 +72,11 @@ public class PigeonTest {
               @SuppressWarnings("unchecked")
               Map<String, Object> wrapped = (Map<String, Object>) codec.decodeMessage(bytes);
               assertTrue(wrapped.containsKey("error"));
+              Map<Object, Object> error = (Map<Object, Object>) wrapped.get("error");
+              assertTrue(error.containsKey("details"));
+              String details = (String) error.get("details");
+              assertTrue(details.contains("Cause:"));
+              assertTrue(details.contains("Stacktrace:"));
             });
   }
 
@@ -85,7 +92,7 @@ public class PigeonTest {
     request.setValue(1234l);
     request.setState(Pigeon.LoadingState.complete);
     MessageCodec<Object> codec = Pigeon.Api.getCodec();
-    ByteBuffer message = codec.encodeMessage(request);
+    ByteBuffer message = codec.encodeMessage(new ArrayList<Object>(Arrays.asList(request)));
     message.rewind();
     handler
         .getValue()
@@ -102,5 +109,14 @@ public class PigeonTest {
         ArgumentCaptor.forClass(Pigeon.SetRequest.class);
     verify(mockApi).setValue(receivedRequest.capture());
     assertEquals(request.getValue(), receivedRequest.getValue().getValue());
+  }
+
+  @Test
+  public void encodeWithNullField() {
+    Pigeon.NestedRequest request = new Pigeon.NestedRequest();
+    request.setContext("hello");
+    MessageCodec<Object> codec = Pigeon.NestedApi.getCodec();
+    ByteBuffer message = codec.encodeMessage(request);
+    assertNotNull(message);
   }
 }
