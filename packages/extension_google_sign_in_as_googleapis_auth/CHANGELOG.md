@@ -1,3 +1,19 @@
+## NEXT
+
+* Updates minimum Flutter version to 3.0.
+
+## 2.0.7
+
+* Fixes lint warnings.
+
+## 2.0.6
+
+* Drops support for Flutter <2.8.
+
+## 2.0.5
+
+* Updates README to reference the correct github URL.
+
 ## 2.0.4
 
 * Update example with the latest changes from `google_sign_in`, so it builds again on Android. [#89301](https://github.com/flutter/flutter/issues/89301).

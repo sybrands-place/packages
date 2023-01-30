@@ -86,18 +86,35 @@ void defineTests() {
         );
 
         final Iterable<Widget> widgets = tester.allWidgets;
-        expectTextStrings(widgets, <String>[
-          '1.',
-          'Item 1',
-          '2.',
-          'Item 2',
-          '3.',
-          'Item 3',
-          '10.',
-          'Item 10',
-          '11.',
-          'Item 11'
-        ]);
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectTextStrings(widgets, <String>[
+            '1.',
+            'Item 1',
+            '2.',
+            'Item 2',
+            '3.',
+            'Item 3',
+            '10.',
+            'Item 10',
+            '11.',
+            'Item 11'
+          ]);
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectTextStrings(widgets, <String>[
+            '1.',
+            'Item 1',
+            '2.',
+            'Item 2',
+            '3.',
+            'Item 3',
+            '4.',
+            'Item 10',
+            '5.',
+            'Item 11'
+          ]);
+        }
       },
     );
 
@@ -181,6 +198,54 @@ void defineTests() {
           'false',
           'Item 2',
         ]);
+      },
+    );
+  });
+
+  group('fitContent', () {
+    testWidgets(
+      'uses maximum width when false',
+      (WidgetTester tester) async {
+        const String data = '- Foo\n- Bar';
+
+        await tester.pumpWidget(
+          boilerplate(
+            Column(
+              children: const <Widget>[
+                MarkdownBody(fitContent: false, data: data),
+              ],
+            ),
+          ),
+        );
+
+        final double screenWidth = tester.allElements.first.size!.width;
+        final double markdownBodyWidth =
+            find.byType(MarkdownBody).evaluate().single.size!.width;
+
+        expect(markdownBodyWidth, equals(screenWidth));
+      },
+    );
+
+    testWidgets(
+      'uses minimum width when true',
+      (WidgetTester tester) async {
+        const String data = '- Foo\n- Bar';
+
+        await tester.pumpWidget(
+          boilerplate(
+            Column(
+              children: const <Widget>[
+                MarkdownBody(data: data),
+              ],
+            ),
+          ),
+        );
+
+        final double screenWidth = tester.allElements.first.size!.width;
+        final double markdownBodyWidth =
+            find.byType(MarkdownBody).evaluate().single.size!.width;
+
+        expect(markdownBodyWidth, lessThan(screenWidth));
       },
     );
   });

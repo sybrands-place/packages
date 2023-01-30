@@ -8,7 +8,7 @@ import 'package:flutter_unit_tests/null_fields.gen.dart';
 void main() {
   test('test constructor with values', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest(query: 'query');
+        NullFieldsSearchRequest(query: 'query', identifier: 1);
 
     final NullFieldsSearchReply reply = NullFieldsSearchReply(
       result: 'result',
@@ -27,19 +27,13 @@ void main() {
 
   test('test request constructor with nulls', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest(query: null);
+        NullFieldsSearchRequest(identifier: 1);
 
     expect(request.query, isNull);
   });
 
   test('test reply constructor with nulls', () {
-    final NullFieldsSearchReply reply = NullFieldsSearchReply(
-      result: null,
-      error: null,
-      indices: null,
-      request: null,
-      type: null,
-    );
+    final NullFieldsSearchReply reply = NullFieldsSearchReply();
 
     expect(reply.result, isNull);
     expect(reply.error, isNull);
@@ -50,33 +44,35 @@ void main() {
 
   test('test request decode with values', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest.decode(<String, dynamic>{
-      'query': 'query',
-    });
+        NullFieldsSearchRequest.decode(<dynamic>[
+      'query',
+      1,
+    ]);
 
     expect(request.query, 'query');
   });
 
   test('test request decode with null', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest.decode(<String, dynamic>{
-      'query': null,
-    });
+        NullFieldsSearchRequest.decode(<dynamic>[
+      null,
+      1,
+    ]);
 
     expect(request.query, isNull);
   });
 
   test('test reply decode with values', () {
-    final NullFieldsSearchReply reply =
-        NullFieldsSearchReply.decode(<String, dynamic>{
-      'result': 'result',
-      'error': 'error',
-      'indices': <int>[1, 2, 3],
-      'request': <String, dynamic>{
-        'query': 'query',
-      },
-      'type': NullFieldsSearchReplyType.success.index,
-    });
+    final NullFieldsSearchReply reply = NullFieldsSearchReply.decode(<dynamic>[
+      'result',
+      'error',
+      <int>[1, 2, 3],
+      <dynamic>[
+        'query',
+        1,
+      ],
+      NullFieldsSearchReplyType.success.index,
+    ]);
 
     expect(reply.result, 'result');
     expect(reply.error, 'error');
@@ -86,14 +82,13 @@ void main() {
   });
 
   test('test reply decode with nulls', () {
-    final NullFieldsSearchReply reply =
-        NullFieldsSearchReply.decode(<String, dynamic>{
-      'result': null,
-      'error': null,
-      'indices': null,
-      'request': null,
-      'type': null,
-    });
+    final NullFieldsSearchReply reply = NullFieldsSearchReply.decode(<dynamic>[
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
 
     expect(reply.result, isNull);
     expect(reply.error, isNull);
@@ -104,20 +99,22 @@ void main() {
 
   test('test request encode with values', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest(query: 'query');
+        NullFieldsSearchRequest(query: 'query', identifier: 1);
 
-    expect(request.encode(), <String, dynamic>{
-      'query': 'query',
-    });
+    expect(request.encode(), <Object?>[
+      'query',
+      1,
+    ]);
   });
 
   test('test request encode with null', () {
     final NullFieldsSearchRequest request =
-        NullFieldsSearchRequest(query: null);
+        NullFieldsSearchRequest(identifier: 1);
 
-    expect(request.encode(), <String, dynamic>{
-      'query': null,
-    });
+    expect(request.encode(), <Object?>[
+      null,
+      1,
+    ]);
   });
 
   test('test reply encode with values', () {
@@ -125,36 +122,31 @@ void main() {
       result: 'result',
       error: 'error',
       indices: <int>[1, 2, 3],
-      request: NullFieldsSearchRequest(query: 'query'),
+      request: NullFieldsSearchRequest(query: 'query', identifier: 1),
       type: NullFieldsSearchReplyType.success,
     );
 
-    expect(reply.encode(), <String, dynamic>{
-      'result': 'result',
-      'error': 'error',
-      'indices': <int>[1, 2, 3],
-      'request': <String, dynamic>{
-        'query': 'query',
-      },
-      'type': NullFieldsSearchReplyType.success.index,
-    });
+    expect(reply.encode(), <Object?>[
+      'result',
+      'error',
+      <int>[1, 2, 3],
+      <Object?>[
+        'query',
+        1,
+      ],
+      NullFieldsSearchReplyType.success.index,
+    ]);
   });
 
   test('test reply encode with nulls', () {
-    final NullFieldsSearchReply reply = NullFieldsSearchReply(
-      result: null,
-      error: null,
-      indices: null,
-      request: null,
-      type: null,
-    );
+    final NullFieldsSearchReply reply = NullFieldsSearchReply();
 
-    expect(reply.encode(), <String, dynamic>{
-      'result': null,
-      'error': null,
-      'indices': null,
-      'request': null,
-      'type': null,
-    });
+    expect(reply.encode(), <Object?>[
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
 }

@@ -1,7 +1,16 @@
 ## NEXT
 
+* Updates minimum Flutter version to 3.0.
+
+## 0.9.3+3
+
+* Fixes lint warnings.
+
+## 0.9.3+2
+
 * (Temporarily) helps tests introduced in prior version to pass in `stable`.
   (This will be removed when `master` rolls to `stable`)
+* Updates README to reference the correct github URL.
 
 ## 0.9.3+1
 

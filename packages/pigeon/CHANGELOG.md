@@ -1,3 +1,236 @@
+## 7.1.4
+
+* [java] Fixes raw types lint issues.
+
+## 7.1.3
+
+* [objc] Removes unused function.
+
+## 7.1.2
+
+* [swift] Adds error handling to sync host api methods.
+
+## 7.1.1
+
+* [c++] Fixes handling of the `cpp*` options in `@ConfigurePigeon` annotations.
+
+## 7.1.0
+
+* Adds `@SwiftFunction` annotation for specifying custom swift function signature.
+
+## 7.0.5
+
+* Requires analyzer 5.0.0 and replaces use of deprecated APIs.
+
+## 7.0.4
+
+* [c++] Fixes minor output formatting issues.
+
+## 7.0.3
+
+* Updates scoped methods to prevent symbol-less use.
+
+## 7.0.2
+
+* [kotlin] Fixes a missed casting of not nullable Dart 'int' to Kotlin 64bit long.
+
+## 7.0.1
+
+* [generator_tools] adds `newln` method for adding empty lines and ending lines.
+* Updates generators to more closely match Flutter formatter tool output.
+
+## 7.0.0
+
+* [java] **BREAKING CHANGE**: Makes data classes final.
+  Updates generators for 1p linters.
+
+## 6.0.3
+
+* [docs] Updates README.md.
+
+## 6.0.2
+
+* [kotlin] Fixes a bug with a missed line break between generated statements in the `fromList` function of the companion object.
+
+## 6.0.1
+
+* [c++] Fixes most non-class arguments and return values in Flutter APIs. The
+  types of arguments and return values have changed, so this may require updates
+  to existing code.
+
+## 6.0.0
+
+* Creates StructuredGenerator class and implements it on all platforms.
+
+## 5.0.1
+
+* [c++] Fixes undefined behavior in `@async` methods.
+
+## 5.0.0
+
+* Creates new Generator classes for each language.
+
+## 4.2.16
+
+* [swift] Fixes warnings with `Object` parameters.
+* [dart] Fixes warnings with `Object` return values.
+* [c++] Generation of APIs that use `Object` no longer fails.
+
+## 4.2.15
+
+* Relocates generator classes. (Reverted)
+
+## 4.2.14
+
+* [c++] Fixes reply sending non EncodableValue wrapped lists.
+
+## 4.2.13
+
+* Add documentation comment support for Enum members.
+
+## 4.2.12
+
+* Updates serialization to use lists instead of maps to improve performance.
+
+## 4.2.11
+
+* [swift] Fixes compressed list data types.
+
+## 4.2.10
+
+* Changes generated Java enum field to be final.
+
+## 4.2.9
+
+* [kotlin] Fixes a bug with some methods that return `void`.
+
+## 4.2.8
+
+* Adds the ability to use `runWithOptions` entrypoint to allow external libraries to use the pigeon easier.
+
+## 4.2.7
+
+* [swift] Fixes a bug when calling methods that return `void`.
+
+## 4.2.6
+
+* Fixes bug with parsing documentation comments that start with '/'.
+
+## 4.2.5
+
+* [dart] Fixes enum parameter handling in Dart test API class.
+
+## 4.2.4
+
+* [kotlin] Fixes Kotlin generated sync host api error.
+
+## 4.2.3
+
+* [java] Adds assert `args != null`.
+* [java] Changes the args of a single element to `ArrayList` from `Arrays.asList` to `Collections.singletonList`.
+* [java] Removes cast for `Object`.
+
+## 4.2.2
+
+* Removes unneeded custom codecs for all languages.
+
+## 4.2.1
+
+* Adds documentation comment support for Kotlin.
+
+## 4.2.0
+
+* Adds experimental support for Kotlin generation.
+
+## 4.1.1
+
+* [java] Adds missing `@NonNull` annotations to some methods.
+
+## 4.1.0
+
+* Adds documentation comment support for all currently supported languages.
+
+## 4.0.3
+
+* [swift] Makes swift output work on macOS.
+
+## 4.0.2
+
+* Fixes lint warnings.
+
+## 4.0.1
+
+* Exposes `SwiftOptions`.
+
+## 4.0.0
+
+* [java] **BREAKING CHANGE**: Changes style for enum values from camelCase to snake_case.
+  Generated java enum values will now always be in upper snake_case.
+
+## 3.2.9
+
+* Updates text theme parameters to avoid deprecation issues.
+
+## 3.2.8
+
+* [dart] Deduces the correct import statement for Dart test files made with
+  `dartHostTestHandler` instead of relying on relative imports.
+
+## 3.2.7
+
+* Requires `analyzer 4.4.0`, and replaces use of deprecated APIs.
+
+## 3.2.6
+
+* [java] Fixes returning int values from FlutterApi methods that fit in 32 bits.
+
+## 3.2.5
+
+* [c++] Fixes style issues in `FlutterError` and `ErrorOr`. The names and
+  visibility of some members have changed, so this may require updates
+  to existing code.
+
+## 3.2.4
+
+* [c++] Fixes most non-class arguments and return values in host APIs. The
+  types of arguments and return values have changed, so this may require updates
+  to existing code.
+
+## 3.2.3
+
+* Adds `unnecessary_import` to linter ignore list in generated dart tests.
+
+## 3.2.2
+
+* Adds `unnecessary_import` to linter ignore list for `package:flutter/foundation.dart`.
+
+## 3.2.1
+
+* Removes `@dart = 2.12` from generated Dart code.
+
+## 3.2.0
+
+* Adds experimental support for Swift generation.
+
+## 3.1.7
+
+* [java] Adds option to add javax.annotation.Generated annotation.
+
+## 3.1.6
+
+* Supports newer versions of `analyzer`.
+
+## 3.1.5
+
+* Fixes potential crash bug when using a nullable nested type that has nonnull
+  fields in ObjC.
+
+## 3.1.4
+
+* [c++] Adds support for non-nullable fields, and fixes some issues with
+  nullable fields. The types of some getters and setter have changed, so this
+  may require updates to existing code.
+
 ## 3.1.3
 
 * Adds support for enums in arguments to methods for HostApis.

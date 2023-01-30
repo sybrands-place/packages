@@ -2,17 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 import 'package:meta/meta_meta.dart';
 
-import 'go_route.dart';
-import 'go_router_state.dart';
+import 'route.dart';
+import 'state.dart';
 
 /// Baseclass for supporting
-/// [typed routing](https://gorouter.dev/typed-routing).
+/// [Type-safe routing](https://pub.dev/documentation/go_router/latest/topics/Type-safe%20routes-topic.html).
 ///
-/// Subclasses must override one of [build], [buildPage], or [redirect].
+/// Subclasses must override one of [build], [buildPage], or
+/// [redirect].
+/// {@category Type-safe routes}
 abstract class GoRouteData {
   /// Allows subclasses to have `const` constructors.
   ///
@@ -21,10 +25,12 @@ abstract class GoRouteData {
 
   /// Creates the [Widget] for `this` route.
   ///
-  /// Subclasses must override one of [build], [buildPage], or [redirect].
+  /// Subclasses must override one of [build], [buildPage], or
+  /// [redirect].
   ///
   /// Corresponds to [GoRoute.builder].
-  Widget build(BuildContext context) => throw UnimplementedError(
+  Widget build(BuildContext context, GoRouterState state) =>
+      throw UnimplementedError(
         'One of `build` or `buildPage` must be implemented.',
       );
 
@@ -32,20 +38,23 @@ abstract class GoRouteData {
   ///
   /// Subclasses can override this function to provide a custom [Page].
   ///
-  /// Subclasses must override one of [build], [buildPage], or [redirect].
+  /// Subclasses must override one of [build], [buildPage] or
+  /// [redirect].
   ///
   /// Corresponds to [GoRoute.pageBuilder].
   ///
   /// By default, returns a [Page] instance that is ignored, causing a default
   /// [Page] implementation to be used with the results of [build].
-  Page<void> buildPage(BuildContext context) => const NoOpPage();
+  Page<void> buildPage(BuildContext context, GoRouterState state) =>
+      const NoOpPage();
 
   /// An optional redirect function for this route.
   ///
-  /// Subclasses must override one of [build], [buildPage], or [redirect].
+  /// Subclasses must override one of [build], [buildPage], or
+  /// [redirect].
   ///
   /// Corresponds to [GoRoute.redirect].
-  String? redirect() => null;
+  FutureOr<String?> redirect(BuildContext context, GoRouterState state) => null;
 
   /// A helper function used by generated code.
   ///
@@ -55,7 +64,7 @@ abstract class GoRouteData {
           .replace(
             queryParameters:
                 // Avoid `?` in generated location if `queryParams` is empty
-                queryParams?.isNotEmpty == true ? queryParams : null,
+                queryParams?.isNotEmpty ?? false ? queryParams : null,
           )
           .toString();
 
@@ -80,12 +89,13 @@ abstract class GoRouteData {
     }
 
     Widget builder(BuildContext context, GoRouterState state) =>
-        factoryImpl(state).build(context);
+        factoryImpl(state).build(context, state);
 
     Page<void> pageBuilder(BuildContext context, GoRouterState state) =>
-        factoryImpl(state).buildPage(context);
+        factoryImpl(state).buildPage(context, state);
 
-    String? redirect(GoRouterState state) => factoryImpl(state).redirect();
+    FutureOr<String?> redirect(BuildContext context, GoRouterState state) =>
+        factoryImpl(state).redirect(context, state);
 
     return GoRoute(
       path: path,

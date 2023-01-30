@@ -209,8 +209,9 @@ class MarkdownBuilder implements md.NodeVisitor {
       _addAnonymousBlockIfNeeded();
       if (_isListTag(tag)) {
         _listIndents.add(tag);
-        if (element.attributes['start'] != null)
+        if (element.attributes['start'] != null) {
           start = int.parse(element.attributes['start']!) - 1;
+        }
       } else if (tag == 'blockquote') {
         _isInBlockquote = true;
       } else if (tag == 'table') {
@@ -278,7 +279,7 @@ class MarkdownBuilder implements md.NodeVisitor {
         ? element.children!
             .map((md.Node e) =>
                 e is md.Text ? e.text : extractTextFromElement(e))
-            .join('')
+            .join()
         : (element is md.Element && (element.attributes.isNotEmpty)
             ? element.attributes['alt']
             : '');
@@ -298,13 +299,13 @@ class MarkdownBuilder implements md.NodeVisitor {
     String trimText(String text) {
       // The leading spaces pattern is used to identify spaces
       // at the beginning of a line of text.
-      final RegExp _leadingSpacesPattern = RegExp(r'^ *');
+      final RegExp leadingSpacesPattern = RegExp(r'^ *');
 
       // The soft line break is used to identify the spaces at the end of a line
       // of text and the leading spaces in the immediately following the line
       // of text. These spaces are removed in accordance with the Markdown
       // specification on soft line breaks when lines of text are joined.
-      final RegExp _softLineBreak = RegExp(r' ?\n *');
+      final RegExp softLineBreakPattern = RegExp(r' ?\n *');
 
       // Leading spaces following a hard line break are ignored.
       // https://github.github.com/gfm/#example-657
@@ -312,13 +313,13 @@ class MarkdownBuilder implements md.NodeVisitor {
       // https://github.github.com/gfm/#example-192
       // https://github.github.com/gfm/#example-236
       if (const <String>['ul', 'ol', 'p', 'br'].contains(_lastVisitedTag)) {
-        text = text.replaceAll(_leadingSpacesPattern, '');
+        text = text.replaceAll(leadingSpacesPattern, '');
       }
 
       if (softLineBreak) {
         return text;
       }
-      return text.replaceAll(_softLineBreak, ' ');
+      return text.replaceAll(softLineBreakPattern, ' ');
     }
 
     Widget? child;
@@ -364,6 +365,7 @@ class MarkdownBuilder implements md.NodeVisitor {
 
       if (current.children.isNotEmpty) {
         child = Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: fitContent
               ? CrossAxisAlignment.start
               : CrossAxisAlignment.stretch,
@@ -384,12 +386,13 @@ class MarkdownBuilder implements md.NodeVisitor {
           Widget bullet;
           final dynamic el = element.children![0];
           if (el is md.Element && el.attributes['type'] == 'checkbox') {
-            final bool val = el.attributes['checked'] != 'false';
+            final bool val = el.attributes.containsKey('checked');
             bullet = _buildCheckbox(val);
           } else {
             bullet = _buildBullet(_listIndents.last);
           }
           child = Row(
+            mainAxisSize: fitContent ? MainAxisSize.min : MainAxisSize.max,
             textBaseline: listItemCrossAxisAlignment ==
                     MarkdownListItemCrossAxisAlignment.start
                 ? null
@@ -405,7 +408,10 @@ class MarkdownBuilder implements md.NodeVisitor {
                     styleSheet.listBulletPadding!.right,
                 child: bullet,
               ),
-              Expanded(child: child)
+              Flexible(
+                fit: fitContent ? FlexFit.loose : FlexFit.tight,
+                child: child,
+              )
             ],
           );
         }
@@ -464,9 +470,27 @@ class MarkdownBuilder implements md.NodeVisitor {
         current.children.add(_buildRichText(const TextSpan(text: '\n')));
       } else if (tag == 'th' || tag == 'td') {
         TextAlign? align;
+        // `style` was using in pkg:markdown <= 6.0.1
+        // Can be removed when min pkg:markedwn > 6.0.1
         final String? style = element.attributes['style'];
         if (style == null) {
-          align = tag == 'th' ? styleSheet.tableHeadAlign : TextAlign.left;
+          // `align` is using in pkg:markdown > 6.0.1
+          final String? alignAttribute = element.attributes['align'];
+          if (alignAttribute == null) {
+            align = tag == 'th' ? styleSheet.tableHeadAlign : TextAlign.left;
+          } else {
+            switch (alignAttribute) {
+              case 'left':
+                align = TextAlign.left;
+                break;
+              case 'center':
+                align = TextAlign.center;
+                break;
+              case 'right':
+                align = TextAlign.right;
+                break;
+            }
+          }
         } else {
           final RegExp regExp = RegExp(r'text-align: (left|center|right)');
           final Match match = regExp.matchAsPrefix(style)!;
@@ -529,7 +553,7 @@ class MarkdownBuilder implements md.NodeVisitor {
     if (_linkHandlers.isNotEmpty) {
       final TapGestureRecognizer recognizer =
           _linkHandlers.last as TapGestureRecognizer;
-      return GestureDetector(child: child, onTap: recognizer.onTap);
+      return GestureDetector(onTap: recognizer.onTap, child: child);
     } else {
       return child;
     }
@@ -647,8 +671,8 @@ class MarkdownBuilder implements md.NodeVisitor {
       );
       final Wrap wrap = Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
-        children: mergedInlines,
         alignment: blockAlignment,
+        children: mergedInlines,
       );
 
       if (textPadding == EdgeInsets.zero) {
@@ -756,10 +780,8 @@ class MarkdownBuilder implements md.NodeVisitor {
       case 'pre':
         return styleSheet.codeblockAlign;
       case 'hr':
-        print('Markdown did not handle hr for alignment');
         break;
       case 'li':
-        print('Markdown did not handle li for alignment');
         break;
     }
     return WrapAlignment.start;

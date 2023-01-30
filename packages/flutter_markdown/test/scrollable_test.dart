@@ -15,7 +15,7 @@ void defineTests() {
       'code block',
       (WidgetTester tester) async {
         const String data =
-            '```\nvoid main() {\n  print(\'Hello World!\');\n}\n```';
+            "```\nvoid main() {\n  print('Hello World!');\n}\n```";
 
         await tester.pumpWidget(
           boilerplate(
@@ -65,9 +65,11 @@ void defineTests() {
           ),
         );
 
-        final List<Widget> widgets = tester.allWidgets.toList();
-        expectWidgetTypes(widgets.take(3), <Type>[
-          Directionality,
+        final List<Widget> widgets = selfAndDescendantWidgetsOf(
+          find.byType(Markdown),
+          tester,
+        ).toList();
+        expectWidgetTypes(widgets.take(2), <Type>[
           Markdown,
           ListView,
         ]);

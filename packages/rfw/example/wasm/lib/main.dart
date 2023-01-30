@@ -14,7 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:rfw/rfw.dart';
 import 'package:wasm/wasm.dart';
 
-const String urlPrefix = 'https://raw.githubusercontent.com/flutter/packages/master/packages/rfw/example/wasm/logic';
+const String urlPrefix = 'https://raw.githubusercontent.com/flutter/packages/main/packages/rfw/example/wasm/logic';
 
 const String interfaceUrl = '$urlPrefix/calculator.rfw';
 const String logicUrl = '$urlPrefix/calculator.wasm';
@@ -71,15 +71,17 @@ class _ExampleState extends State<Example> {
   }
 
   List<Object?> _asList(Object? value) {
-    if (value is List<Object?>)
+    if (value is List<Object?>) {
       return value;
+    }
     return const <Object?>[];
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!RendererBinding.instance.sendFramesToEngine)
+    if (!RendererBinding.instance.sendFramesToEngine) {
       return const SizedBox.shrink();
+    }
     return RemoteWidget(
       runtime: _runtime,
       data: _data,

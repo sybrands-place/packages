@@ -1,3 +1,15 @@
+## NEXT
+
+* Updates minimum SDK version to Flutter 3.0.
+
+## 1.0.6
+
+- Fixes lint warnings.
+
+## 1.0.5
+
+- Fix JSON parsing issue when running in sound null-safety mode.
+
 ## 1.0.4
 
 - Fix un-await-ed Future in `SkiaPerfDestination.update`.

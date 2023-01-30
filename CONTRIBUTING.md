@@ -1,6 +1,6 @@
 # Contributing to Flutter Packages
 
-[![Build Status](https://api.cirrus-ci.com/github/flutter/packages.svg)](https://cirrus-ci.com/github/flutter/packages/master)
+[![Build Status](https://api.cirrus-ci.com/github/flutter/packages.svg)](https://cirrus-ci.com/github/flutter/packages/main)
 
 _See also: [Flutter's code of conduct](https://github.com/flutter/flutter/blob/master/CODE_OF_CONDUCT.md)_
 
@@ -15,6 +15,8 @@ Additional resources specific to the packages repository:
   which covers the setup process for this repository.
 - [Packages repository structure](https://github.com/flutter/flutter/wiki/Plugins-and-Packages-repository-structure),
   to get an overview of how this repository is laid out.
+- [Contributing to Plugins and Packages](https://github.com/flutter/flutter/wiki/Contributing-to-Plugins-and-Packages),
+  for more information about how to make PRs for this repository.
 
 ## Notes
 

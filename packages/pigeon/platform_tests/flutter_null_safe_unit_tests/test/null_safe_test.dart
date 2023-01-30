@@ -6,7 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_unit_tests/null_safe_pigeon.dart';
+import 'package:flutter_unit_tests/flutter_unittests.gen.dart';
 import 'package:flutter_unit_tests/nullable_returns.gen.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -25,45 +25,44 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('with values filled', () {
-    final SearchReply reply = SearchReply()
+    final FlutterSearchReply reply = FlutterSearchReply()
       ..result = 'foo'
       ..error = 'bar';
-    final Object encoded = reply.encode();
-    final SearchReply decoded = SearchReply.decode(encoded);
+    final List<Object?> encoded = reply.encode() as List<Object?>;
+    final FlutterSearchReply decoded = FlutterSearchReply.decode(encoded);
     expect(reply.result, decoded.result);
     expect(reply.error, decoded.error);
   });
 
   test('with null value', () {
-    final SearchReply reply = SearchReply()
+    final FlutterSearchReply reply = FlutterSearchReply()
       ..result = 'foo'
       ..error = null;
-    final Object encoded = reply.encode();
-    final SearchReply decoded = SearchReply.decode(encoded);
+    final List<Object?> encoded = reply.encode() as List<Object?>;
+    final FlutterSearchReply decoded = FlutterSearchReply.decode(encoded);
     expect(reply.result, decoded.result);
     expect(reply.error, decoded.error);
   });
 
   test('send/receive', () async {
-    final SearchRequest request = SearchRequest()..query = 'hey';
-    final SearchReply reply = SearchReply()..result = 'ho';
+    final FlutterSearchRequest request = FlutterSearchRequest()..query = 'hey';
+    final FlutterSearchReply reply = FlutterSearchReply()..result = 'ho';
     final BinaryMessenger mockMessenger = MockBinaryMessenger();
     final Completer<ByteData?> completer = Completer<ByteData?>();
-    completer
-        .complete(Api.codec.encodeMessage(<String, Object>{'result': reply}));
+    completer.complete(Api.codec.encodeMessage(<Object>[reply]));
     final Future<ByteData?> sendResult = completer.future;
     when(mockMessenger.send('dev.flutter.pigeon.Api.search', any))
         .thenAnswer((Invocation realInvocation) => sendResult);
     final Api api = Api(binaryMessenger: mockMessenger);
-    final SearchReply readReply = await api.search(request);
+    final FlutterSearchReply readReply = await api.search(request);
     expect(readReply, isNotNull);
     expect(reply.result, readReply.result);
   });
 
   test('send/receive list classes', () async {
-    final SearchRequest request = SearchRequest()..query = 'hey';
-    final SearchRequests requests = SearchRequests()
-      ..requests = <SearchRequest>[request];
+    final FlutterSearchRequest request = FlutterSearchRequest()..query = 'hey';
+    final FlutterSearchRequests requests = FlutterSearchRequests()
+      ..requests = <FlutterSearchRequest>[request];
     final BinaryMessenger mockMessenger = MockBinaryMessenger();
     echoOneArgument(
       mockMessenger,
@@ -71,9 +70,9 @@ void main() {
       Api.codec,
     );
     final Api api = Api(binaryMessenger: mockMessenger);
-    final SearchRequests echo = await api.echo(requests);
+    final FlutterSearchRequests echo = await api.echo(requests);
     expect(echo.requests!.length, 1);
-    expect((echo.requests![0] as SearchRequest?)!.query, 'hey');
+    expect((echo.requests![0] as FlutterSearchRequest?)!.query, 'hey');
   });
 
   test('primitive datatypes', () async {
@@ -93,7 +92,7 @@ void main() {
     const String channel = 'dev.flutter.pigeon.Api.anInt';
     when(mockMessenger.send(channel, any))
         .thenAnswer((Invocation realInvocation) async {
-      return Api.codec.encodeMessage(<String?, Object?>{'result': null});
+      return Api.codec.encodeMessage(<Object?>[null]);
     });
     final Api api = Api(binaryMessenger: mockMessenger);
     expect(() async => api.anInt(1),
@@ -105,7 +104,7 @@ void main() {
     const String channel = 'dev.flutter.pigeon.NullableArgHostApi.doit';
     when(mockMessenger.send(channel, any))
         .thenAnswer((Invocation realInvocation) async {
-      return Api.codec.encodeMessage(<String?, Object?>{'result': 123});
+      return Api.codec.encodeMessage(<Object?>[123]);
     });
     final NullableArgHostApi api =
         NullableArgHostApi(binaryMessenger: mockMessenger);
@@ -118,9 +117,9 @@ void main() {
         'dev.flutter.pigeon.NullableCollectionArgHostApi.doit';
     when(mockMessenger.send(channel, any))
         .thenAnswer((Invocation realInvocation) async {
-      return Api.codec.encodeMessage(<String?, Object?>{
-        'result': <String?>['123']
-      });
+      return Api.codec.encodeMessage(<Object?>[
+        <String?>['123']
+      ]);
     });
     final NullableCollectionArgHostApi api =
         NullableCollectionArgHostApi(binaryMessenger: mockMessenger);
@@ -182,8 +181,7 @@ void main() {
     const String channel = 'dev.flutter.pigeon.NullableReturnHostApi.doit';
     when(mockMessenger.send(channel, any))
         .thenAnswer((Invocation realInvocation) async {
-      return NullableReturnHostApi.codec
-          .encodeMessage(<String?, Object?>{'result': null});
+      return NullableReturnHostApi.codec.encodeMessage(<Object?>[null]);
     });
     final NullableReturnHostApi api =
         NullableReturnHostApi(binaryMessenger: mockMessenger);
@@ -197,7 +195,7 @@ void main() {
     when(mockMessenger.send(channel, any))
         .thenAnswer((Invocation realInvocation) async {
       return NullableCollectionReturnHostApi.codec
-          .encodeMessage(<String?, Object?>{'result': null});
+          .encodeMessage(<Object?>[null]);
     });
     final NullableCollectionReturnHostApi api =
         NullableCollectionReturnHostApi(binaryMessenger: mockMessenger);

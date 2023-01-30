@@ -85,7 +85,7 @@ void main() {
       });
 
       test('retries 6 times then gives up', () async {
-        final dynamic maxAttemptCountReached = expectAsync0(() {});
+        final VoidCallback maxAttemptCountReached = expectAsync0(() {});
 
         int attemptCount = 0;
         Future<void> onAttempt() async {
@@ -142,6 +142,9 @@ void assertThatImageLoadingFails(
 ) {
   final ImageStreamCompleter completer = subject.load(
     subject,
+    // TODO(cyanglaz): migrate to use the new APIs
+    // https://github.com/flutter/flutter/issues/105336
+    // ignore: deprecated_member_use
     PaintingBinding.instance.instantiateImageCodec,
   );
   completer.addListener(ImageStreamListener(
@@ -159,6 +162,9 @@ void assertThatImageLoadingSucceeds(
 ) {
   final ImageStreamCompleter completer = subject.load(
     subject,
+    // TODO(cyanglaz): migrate to use the new APIs
+    // https://github.com/flutter/flutter/issues/105336
+    // ignore: deprecated_member_use
     PaintingBinding.instance.instantiateImageCodec,
   );
   completer.addListener(ImageStreamListener(

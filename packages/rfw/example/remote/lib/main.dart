@@ -11,7 +11,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:rfw/rfw.dart';
 
-const String urlPrefix = 'https://raw.githubusercontent.com/flutter/packages/master/packages/rfw/example/remote/remote_widget_libraries';
+const String urlPrefix = 'https://raw.githubusercontent.com/flutter/packages/main/packages/rfw/example/remote/remote_widget_libraries';
 
 void main() {
   runApp(const MaterialApp(home: Example()));
@@ -65,7 +65,7 @@ class _ExampleState extends State<Example> {
         FlutterError.reportError(FlutterErrorDetails(exception: e, stack: stack));
       }
     }
-    print('Fetching: $urlPrefix/$nextFile');
+    print('Fetching: $urlPrefix/$nextFile'); // ignore: avoid_print
     final HttpClientResponse client = await (await HttpClient().getUrl(Uri.parse('$urlPrefix/$nextFile'))).close();
     await currentFile.writeAsBytes(await client.expand((List<int> chunk) => chunk).toList());
     await settingsFile.writeAsString(nextFile);

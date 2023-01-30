@@ -11,6 +11,8 @@ library network;
 
 import 'dart:async';
 import 'dart:math' as math;
+// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#104231)
+// ignore: unnecessary_import
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -96,6 +98,9 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   @override
+  // TODO(cyanglaz): migrate to use the new APIs
+  // https://github.com/flutter/flutter/issues/105336
+  // ignore: deprecated_member_use
   ImageStreamCompleter load(NetworkImageWithRetry key, DecoderCallback decode) {
     return OneFrameImageStreamCompleter(_loadWithRetry(key, decode),
         informationCollector: () sync* {
@@ -124,7 +129,12 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   Future<ImageInfo> _loadWithRetry(
-      NetworkImageWithRetry key, DecoderCallback decode) async {
+      // TODO(cyanglaz): migrate to use the new APIs
+      // https://github.com/flutter/flutter/issues/105336
+      // ignore: deprecated_member_use
+      NetworkImageWithRetry key,
+      // ignore: deprecated_member_use
+      DecoderCallback decode) async {
     assert(key == this);
 
     final Stopwatch stopwatch = Stopwatch()..start();
@@ -210,8 +220,9 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
     if (other.runtimeType != runtimeType) {
       return false;
     }
-    final NetworkImageWithRetry typedOther = other;
-    return url == typedOther.url && scale == typedOther.scale;
+    return other is NetworkImageWithRetry &&
+        url == other.url &&
+        scale == other.scale;
   }
 
   @override

@@ -1,3 +1,16 @@
+## NEXT
+
+* Updates minimum SDK version to Flutter 3.0.
+
+## 0.2.0+3
+
+* Returns null instead of throwing exception from getUserDirectory when xdg-user-dir executable is missing.
+
+## 0.2.0+2
+
+* Fixes unit tests on Windows.
+* Fixes lint warnings.
+
 ## 0.2.0+1
 
 * Marks the package as Linux-only using the new Dart `platforms` key.

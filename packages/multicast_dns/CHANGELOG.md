@@ -1,3 +1,11 @@
+## NEXT
+
+* Updates minimum SDK version to Flutter 3.0.
+
+## 0.3.2+2
+
+* Fixes lints warnings.
+
 ## 0.3.2+1
 
 * Migrates from `ui.hash*` to `Object.hash*`.

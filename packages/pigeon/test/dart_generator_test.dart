@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:io' show Directory, File;
+
+import 'package:path/path.dart' as path;
 import 'package:pigeon/ast.dart';
 import 'package:pigeon/dart_generator.dart';
 import 'package:pigeon/generator_tools.dart';
@@ -17,8 +20,7 @@ void main() {
               baseName: 'dataType1',
               isNullable: true,
             ),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -27,7 +29,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Foobar'));
     expect(code, contains('  dataType1? field1;'));
@@ -36,9 +39,9 @@ void main() {
   test('gen one enum', () {
     final Enum anEnum = Enum(
       name: 'Foobar',
-      members: <String>[
-        'one',
-        'two',
+      members: <EnumMember>[
+        EnumMember(name: 'one'),
+        EnumMember(name: 'two'),
       ],
     );
     final Root root = Root(
@@ -47,7 +50,8 @@ void main() {
       enums: <Enum>[anEnum],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('enum Foobar'));
     expect(code, contains('  one,'));
@@ -65,12 +69,10 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: 'input',
-                offset: null)
+                name: 'input')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -80,8 +82,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -89,12 +90,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Api'));
     expect(code, contains('Future<Output> doSomething(Input arg_input)'));
@@ -116,12 +117,12 @@ void main() {
                     const TypeDeclaration(isNullable: false, baseName: 'int')),
           ],
           returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Api'));
     expect(code, contains('Future<int> add(int arg_x, int arg_y)'));
@@ -144,12 +145,12 @@ void main() {
                     const TypeDeclaration(isNullable: false, baseName: 'int')),
           ],
           returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Api'));
     expect(code, contains('int add(int x, int y)'));
@@ -170,8 +171,7 @@ void main() {
                 baseName: 'String',
                 isNullable: true,
               ),
-              name: 'input',
-              offset: null)
+              name: 'input')
         ],
       ),
       Class(
@@ -182,24 +182,24 @@ void main() {
                 baseName: 'Input',
                 isNullable: true,
               ),
-              name: 'nested',
-              offset: null)
+              name: 'nested')
         ],
       )
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(
       code,
       contains(
-        'pigeonMap[\'nested\'] = nested?.encode()',
+        'nested?.encode(),',
       ),
     );
     expect(
       code.replaceAll('\n', ' ').replaceAll('  ', ''),
       contains(
-        'nested: pigeonMap[\'nested\'] != null ? Input.decode(pigeonMap[\'nested\']!) : null',
+        'nested: result[0] != null ? Input.decode(result[0]! as List<Object?>) : null',
       ),
     );
   });
@@ -214,8 +214,7 @@ void main() {
                 baseName: 'String',
                 isNullable: false,
               ),
-              name: 'input',
-              offset: null)
+              name: 'input')
         ],
       ),
       Class(
@@ -226,24 +225,24 @@ void main() {
                 baseName: 'Input',
                 isNullable: false,
               ),
-              name: 'nested',
-              offset: null)
+              name: 'nested')
         ],
       )
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(
       code,
       contains(
-        'pigeonMap[\'nested\'] = nested.encode()',
+        'nested.encode(),',
       ),
     );
     expect(
       code.replaceAll('\n', ' ').replaceAll('  ', ''),
       contains(
-        'nested: Input.decode(pigeonMap[\'nested\']!)',
+        'nested: Input.decode(result[0]! as List<Object?>)',
       ),
     );
   });
@@ -259,12 +258,10 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: 'input',
-                offset: null)
+                name: 'input')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -274,8 +271,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -283,12 +279,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('abstract class Api'));
     expect(code, contains('static void setup(Api'));
@@ -306,11 +302,9 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType: const TypeDeclaration.voidDeclaration(),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -320,12 +314,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<void> doSomething'));
     expect(code, contains('return;'));
@@ -342,11 +336,9 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType: const TypeDeclaration.voidDeclaration(),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -356,12 +348,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     // The next line verifies that we're not setting a variable to the value of "doSomething", but
     // ignores the line where we assert the value of the argument isn't null, since on that line
@@ -378,7 +370,6 @@ void main() {
           arguments: <NamedType>[],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -388,12 +379,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, matches('output.*=.*doSomething[(][)]'));
     expect(code, contains('Output doSomething();'));
@@ -410,12 +401,10 @@ void main() {
                   baseName: 'EnumClass',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'EnumClass', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -425,23 +414,23 @@ void main() {
               baseName: 'Enum',
               isNullable: true,
             ),
-            name: 'enum1',
-            offset: null)
+            name: 'enum1')
       ]),
     ], enums: <Enum>[
       Enum(
         name: 'Enum',
-        members: <String>[
-          'one',
-          'two',
+        members: <EnumMember>[
+          EnumMember(name: 'one'),
+          EnumMember(name: 'two'),
         ],
       )
     ]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
-    expect(code, contains('pigeonMap[\'enum1\'] = enum1?.index;'));
-    expect(code, contains('? Enum.values[pigeonMap[\'enum1\']! as int]'));
+    expect(code, contains('enum1?.index,'));
+    expect(code, contains('? Enum.values[result[0]! as int]'));
     expect(code, contains('EnumClass doSomething(EnumClass arg0);'));
   });
 
@@ -459,10 +448,14 @@ void main() {
             ])
       ])
     ], classes: <Class>[], enums: <Enum>[
-      Enum(name: 'Foo', members: <String>['one', 'two'])
+      Enum(name: 'Foo', members: <EnumMember>[
+        EnumMember(name: 'one'),
+        EnumMember(name: 'two'),
+      ])
     ]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('enum Foo {'));
     expect(code, contains('Future<void> bar(Foo? arg_foo) async'));
@@ -480,12 +473,10 @@ void main() {
                   baseName: 'EnumClass',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'EnumClass', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -495,23 +486,23 @@ void main() {
               baseName: 'Enum',
               isNullable: false,
             ),
-            name: 'enum1',
-            offset: null)
+            name: 'enum1')
       ]),
     ], enums: <Enum>[
       Enum(
         name: 'Enum',
-        members: <String>[
-          'one',
-          'two',
+        members: <EnumMember>[
+          EnumMember(name: 'one'),
+          EnumMember(name: 'two'),
         ],
       )
     ]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
-    expect(code, contains('pigeonMap[\'enum1\'] = enum1.index;'));
-    expect(code, contains('enum1: Enum.values[pigeonMap[\'enum1\']! as int]'));
+    expect(code, contains('enum1.index,'));
+    expect(code, contains('enum1: Enum.values[result[0]! as int]'));
   });
 
   test('host void argument', () {
@@ -522,7 +513,6 @@ void main() {
           arguments: <NamedType>[],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -532,12 +522,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, matches('channel.send[(]null[)]'));
   });
@@ -557,12 +547,10 @@ void main() {
                       baseName: 'Input',
                       isNullable: false,
                     ),
-                    name: '',
-                    offset: null)
+                    name: '')
               ],
               returnType:
                   const TypeDeclaration(baseName: 'Output', isNullable: false),
-              isAsynchronous: false,
             ),
             Method(
               name: 'voidReturner',
@@ -572,11 +560,9 @@ void main() {
                       baseName: 'Input',
                       isNullable: false,
                     ),
-                    name: '',
-                    offset: null)
+                    name: '')
               ],
               returnType: const TypeDeclaration.voidDeclaration(),
-              isAsynchronous: false,
             )
           ])
     ], classes: <Class>[
@@ -586,8 +572,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -595,28 +580,37 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer mainCodeSink = StringBuffer();
     final StringBuffer testCodeSink = StringBuffer();
-    generateDart(const DartOptions(), root, mainCodeSink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, mainCodeSink);
     final String mainCode = mainCodeSink.toString();
-    expect(mainCode, isNot(contains('import \'fo\\\'o.dart\';')));
+    expect(mainCode, isNot(contains(r"import 'fo\'o.dart';")));
     expect(mainCode, contains('class Api {'));
     expect(mainCode, isNot(contains('abstract class ApiMock')));
     expect(mainCode, isNot(contains('.ApiMock.doSomething')));
-    expect(mainCode, isNot(contains('\'${Keys.result}\': output')));
-    expect(mainCode, isNot(contains('return <Object, Object>{};')));
-    generateTestDart(const DartOptions(), root, testCodeSink, "fo'o.dart");
+    expect(mainCode, isNot(contains("'${Keys.result}': output")));
+    expect(mainCode, isNot(contains('return <Object>[];')));
+
+    const DartGenerator testGenerator = DartGenerator();
+    testGenerator.generateTest(
+      DartOptions(
+        sourceOutPath: "fo'o.dart",
+        testOutPath: 'test.dart',
+      ),
+      root,
+      testCodeSink,
+    );
     final String testCode = testCodeSink.toString();
-    expect(testCode, contains('import \'fo\\\'o.dart\';'));
+    expect(testCode, contains(r"import 'fo\'o.dart';"));
     expect(testCode, isNot(contains('class Api {')));
     expect(testCode, contains('abstract class ApiMock'));
     expect(testCode, isNot(contains('.ApiMock.doSomething')));
-    expect(testCode, contains('\'${Keys.result}\': output'));
-    expect(testCode, contains('return <Object?, Object?>{};'));
+    expect(testCode, contains('output'));
+    expect(testCode, contains('return <Object?>[];'));
   });
 
   test('gen one async Flutter Api', () {
@@ -630,8 +624,7 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
@@ -645,8 +638,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -654,12 +646,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('abstract class Api'));
     expect(code, contains('Future<Output> doSomething(Input arg0);'));
@@ -678,8 +670,7 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType: const TypeDeclaration.voidDeclaration(),
           isAsynchronous: true,
@@ -692,8 +683,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -701,12 +691,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, isNot(matches('=.s*doSomething')));
     expect(code, contains('await api.doSomething('));
@@ -724,8 +714,7 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
@@ -739,8 +728,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -748,12 +736,12 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Api'));
     expect(code, matches('Output.*doSomething.*Input'));
@@ -777,25 +765,27 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, matches('channel.send[(]null[)]'));
   });
 
-  Iterable<String> _makeIterable(String string) sync* {
+  Iterable<String> makeIterable(String string) sync* {
     yield string;
   }
 
   test('header', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
-    generateDart(
-      DartOptions(copyrightHeader: _makeIterable('hello world')),
+
+    const DartGenerator generator = DartGenerator();
+    generator.generate(
+      DartOptions(copyrightHeader: makeIterable('hello world')),
       root,
       sink,
     );
@@ -814,8 +804,7 @@ void main() {
                 typeArguments: <TypeDeclaration>[
                   TypeDeclaration(baseName: 'int', isNullable: true)
                 ]),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -824,7 +813,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Foobar'));
     expect(code, contains('  List<int?>? field1;'));
@@ -842,8 +832,7 @@ void main() {
                   TypeDeclaration(baseName: 'String', isNullable: true),
                   TypeDeclaration(baseName: 'int', isNullable: true),
                 ]),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -852,7 +841,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('class Foobar'));
     expect(code, contains('  Map<String?, int?>? field1;'));
@@ -873,8 +863,7 @@ void main() {
                         typeArguments: <TypeDeclaration>[
                           TypeDeclaration(baseName: 'int', isNullable: true)
                         ]),
-                    name: 'arg',
-                    offset: null)
+                    name: 'arg')
               ])
         ])
       ],
@@ -882,7 +871,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('doit(List<int?> arg'));
   });
@@ -902,8 +892,7 @@ void main() {
                         typeArguments: <TypeDeclaration>[
                           TypeDeclaration(baseName: 'int', isNullable: true)
                         ]),
-                    name: 'arg',
-                    offset: null)
+                    name: 'arg')
               ])
         ])
       ],
@@ -911,7 +900,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('doit(List<int?> arg'));
   });
@@ -935,13 +925,12 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<List<int?>> doit('));
-    expect(
-        code,
-        contains(
-            'return (replyMap[\'result\'] as List<Object?>?)!.cast<int?>();'));
+    expect(code,
+        contains('return (replyList[0] as List<Object?>?)!.cast<int?>();'));
   });
 
   test('flutter generics argument non void return', () {
@@ -964,8 +953,7 @@ void main() {
                         typeArguments: <TypeDeclaration>[
                           TypeDeclaration(baseName: 'int', isNullable: true)
                         ]),
-                    name: 'foo',
-                    offset: null)
+                    name: 'foo')
               ])
         ])
       ],
@@ -973,7 +961,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('List<int?> doit('));
     expect(
@@ -1000,10 +989,11 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<int?> doit()'));
-    expect(code, contains('return (replyMap[\'result\'] as int?);'));
+    expect(code, contains('return (replyList[0] as int?);'));
   });
 
   test('return nullable collection host', () {
@@ -1025,13 +1015,12 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<List<int?>?> doit()'));
-    expect(
-        code,
-        contains(
-            'return (replyMap[\'result\'] as List<Object?>?)?.cast<int?>();'));
+    expect(code,
+        contains('return (replyList[0] as List<Object?>?)?.cast<int?>();'));
   });
 
   test('return nullable async host', () {
@@ -1052,10 +1041,11 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<int?> doit()'));
-    expect(code, contains('return (replyMap[\'result\'] as int?);'));
+    expect(code, contains('return (replyList[0] as int?);'));
   });
 
   test('return nullable flutter', () {
@@ -1075,7 +1065,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('int? doit();'));
     expect(code, contains('final int? output = api.doit();'));
@@ -1099,7 +1090,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<int?> doit();'));
     expect(code, contains('final int? output = await api.doit();'));
@@ -1122,7 +1114,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(
         code,
@@ -1151,7 +1144,8 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('Future<void> doit(int? arg_foo) async {'));
   });
@@ -1177,8 +1171,248 @@ void main() {
       enums: <Enum>[],
     );
     final StringBuffer sink = StringBuffer();
-    generateDart(const DartOptions(), root, sink);
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
     final String code = sink.toString();
     expect(code, contains('void doit(int? foo);'));
+  });
+
+  test('deduces package name', () {
+    final Directory tempDir = Directory.systemTemp.createTempSync('pigeon');
+    try {
+      final Directory foo = Directory(path.join(tempDir.path, 'lib', 'foo'));
+      foo.createSync(recursive: true);
+      final File pubspecFile = File(path.join(tempDir.path, 'pubspec.yaml'));
+      pubspecFile.writeAsStringSync('''
+name: foobar
+''');
+      final Root root =
+          Root(classes: <Class>[], apis: <Api>[], enums: <Enum>[]);
+      final StringBuffer sink = StringBuffer();
+      const DartGenerator testGenerator = DartGenerator();
+      testGenerator.generateTest(
+        DartOptions(
+          sourceOutPath: path.join(foo.path, 'bar.dart'),
+          testOutPath: path.join(tempDir.path, 'test', 'bar_test.dart'),
+        ),
+        root,
+        sink,
+      );
+      final String code = sink.toString();
+      expect(code, contains("import 'package:foobar/foo/bar.dart';"));
+    } finally {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+
+  test('transfers documentation comments', () {
+    final List<String> comments = <String>[
+      ' api comment',
+      ' api method comment',
+      ' class comment',
+      ' class field comment',
+      ' enum comment',
+      ' enum member comment',
+    ];
+    int count = 0;
+
+    final List<String> unspacedComments = <String>['////////'];
+    int unspacedCount = 0;
+
+    final Root root = Root(
+      apis: <Api>[
+        Api(
+          name: 'Api',
+          location: ApiLocation.flutter,
+          documentationComments: <String>[comments[count++]],
+          methods: <Method>[
+            Method(
+              name: 'method',
+              returnType: const TypeDeclaration.voidDeclaration(),
+              documentationComments: <String>[comments[count++]],
+              arguments: <NamedType>[
+                NamedType(
+                  name: 'field',
+                  type: const TypeDeclaration(
+                    baseName: 'int',
+                    isNullable: true,
+                  ),
+                ),
+              ],
+            )
+          ],
+        )
+      ],
+      classes: <Class>[
+        Class(
+          name: 'class',
+          documentationComments: <String>[comments[count++]],
+          fields: <NamedType>[
+            NamedType(
+                documentationComments: <String>[comments[count++]],
+                type: const TypeDeclaration(
+                    baseName: 'Map',
+                    isNullable: true,
+                    typeArguments: <TypeDeclaration>[
+                      TypeDeclaration(baseName: 'String', isNullable: true),
+                      TypeDeclaration(baseName: 'int', isNullable: true),
+                    ]),
+                name: 'field1'),
+          ],
+        ),
+      ],
+      enums: <Enum>[
+        Enum(
+          name: 'enum',
+          documentationComments: <String>[
+            comments[count++],
+            unspacedComments[unspacedCount++]
+          ],
+          members: <EnumMember>[
+            EnumMember(
+              name: 'one',
+              documentationComments: <String>[comments[count++]],
+            ),
+            EnumMember(name: 'two'),
+          ],
+        ),
+      ],
+    );
+    final StringBuffer sink = StringBuffer();
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
+    final String code = sink.toString();
+    for (final String comment in comments) {
+      expect(code, contains('///$comment'));
+    }
+    expect(code, contains('/// ///'));
+  });
+
+  test('doesnt create codecs if no custom datatypes', () {
+    final Root root = Root(
+      apis: <Api>[
+        Api(
+          name: 'Api',
+          location: ApiLocation.flutter,
+          methods: <Method>[
+            Method(
+              name: 'method',
+              returnType: const TypeDeclaration.voidDeclaration(),
+              arguments: <NamedType>[
+                NamedType(
+                  name: 'field',
+                  type: const TypeDeclaration(
+                    baseName: 'int',
+                    isNullable: true,
+                  ),
+                ),
+              ],
+            )
+          ],
+        )
+      ],
+      classes: <Class>[],
+      enums: <Enum>[],
+    );
+    final StringBuffer sink = StringBuffer();
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
+    final String code = sink.toString();
+    expect(code, isNot(contains('extends StandardMessageCodec')));
+    expect(code, contains('StandardMessageCodec'));
+  });
+
+  test('creates custom codecs if custom datatypes present', () {
+    final Root root = Root(apis: <Api>[
+      Api(name: 'Api', location: ApiLocation.flutter, methods: <Method>[
+        Method(
+          name: 'doSomething',
+          arguments: <NamedType>[
+            NamedType(
+                type: const TypeDeclaration(
+                  baseName: 'Input',
+                  isNullable: false,
+                ),
+                name: '')
+          ],
+          returnType:
+              const TypeDeclaration(baseName: 'Output', isNullable: false),
+          isAsynchronous: true,
+        )
+      ])
+    ], classes: <Class>[
+      Class(name: 'Input', fields: <NamedType>[
+        NamedType(
+            type: const TypeDeclaration(
+              baseName: 'String',
+              isNullable: true,
+            ),
+            name: 'input')
+      ]),
+      Class(name: 'Output', fields: <NamedType>[
+        NamedType(
+            type: const TypeDeclaration(
+              baseName: 'String',
+              isNullable: true,
+            ),
+            name: 'output')
+      ])
+    ], enums: <Enum>[]);
+    final StringBuffer sink = StringBuffer();
+    const DartGenerator generator = DartGenerator();
+    generator.generate(DartOptions(), root, sink);
+    final String code = sink.toString();
+    expect(code, contains('extends StandardMessageCodec'));
+  });
+
+  test('host test code handles enums', () {
+    final Root root = Root(
+      apis: <Api>[
+        Api(
+            name: 'Api',
+            location: ApiLocation.host,
+            dartHostTestHandler: 'ApiMock',
+            methods: <Method>[
+              Method(
+                  name: 'doit',
+                  returnType: const TypeDeclaration.voidDeclaration(),
+                  arguments: <NamedType>[
+                    NamedType(
+                        type: const TypeDeclaration(
+                          baseName: 'Enum',
+                          isNullable: false,
+                        ),
+                        name: 'anEnum')
+                  ])
+            ])
+      ],
+      classes: <Class>[],
+      enums: <Enum>[
+        Enum(
+          name: 'Enum',
+          members: <EnumMember>[
+            EnumMember(name: 'one'),
+            EnumMember(name: 'two'),
+          ],
+        )
+      ],
+    );
+    final StringBuffer sink = StringBuffer();
+
+    const DartGenerator testGenerator = DartGenerator();
+    testGenerator.generateTest(
+      DartOptions(
+        sourceOutPath: 'code.dart',
+        testOutPath: 'test.dart',
+      ),
+      root,
+      sink,
+    );
+
+    final String testCode = sink.toString();
+    expect(
+        testCode,
+        contains(
+            'final Enum? arg_anEnum = args[0] == null ? null : Enum.values[args[0] as int]'));
   });
 }

@@ -17,8 +17,7 @@ void main() {
               baseName: 'int',
               isNullable: true,
             ),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -28,20 +27,28 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public class Messages'));
-    expect(code, contains('public static class Foobar'));
+    expect(code, contains('public static final class Foobar'));
     expect(code, contains('public static final class Builder'));
     expect(code, contains('private @Nullable Long field1;'));
+    expect(
+        code,
+        contains(RegExp(
+            r'@NonNull\s*private static ArrayList<Object> wrapError\(@NonNull Throwable exception\)')));
+    expect(code, isNot(contains('ArrayList ')));
+    expect(code, isNot(contains('ArrayList<>')));
   });
 
   test('gen one enum', () {
     final Enum anEnum = Enum(
       name: 'Foobar',
-      members: <String>[
-        'one',
-        'two',
+      members: <EnumMember>[
+        EnumMember(name: 'one'),
+        EnumMember(name: 'twoThreeFour'),
+        EnumMember(name: 'remoteDB'),
       ],
     );
     final Root root = Root(
@@ -51,12 +58,14 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public enum Foobar'));
-    expect(code, contains('    one(0),'));
-    expect(code, contains('    two(1);'));
-    expect(code, contains('private int index;'));
+    expect(code, contains('    ONE(0),'));
+    expect(code, contains('    TWO_THREE_FOUR(1),'));
+    expect(code, contains('    REMOTE_DB(2);'));
+    expect(code, contains('private final int index;'));
     expect(code, contains('private Foobar(final int index) {'));
     expect(code, contains('      this.index = index;'));
   });
@@ -70,8 +79,7 @@ void main() {
               baseName: 'int',
               isNullable: true,
             ),
-            name: 'field1',
-            offset: null)
+            name: 'field1')
       ],
     );
     final Root root = Root(
@@ -82,10 +90,11 @@ void main() {
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions =
         JavaOptions(className: 'Messages', package: 'com.google.foobar');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('package com.google.foobar;'));
-    expect(code, contains('Map<String, Object> toMap()'));
+    expect(code, contains('ArrayList<Object> toList()'));
   });
 
   test('gen one host api', () {
@@ -99,12 +108,10 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -114,8 +121,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -123,17 +129,25 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public interface Api'));
     expect(code, matches('Output.*doSomething.*Input'));
     expect(code, contains('channel.setMessageHandler(null)'));
+    expect(
+        code,
+        contains(
+            'protected Object readValueOfType(byte type, @NonNull ByteBuffer buffer)'));
+    expect(
+        code,
+        contains(
+            'protected void writeValue(@NonNull ByteArrayOutputStream stream, Object value)'));
   });
 
   test('all the simple datatypes header', () {
@@ -144,63 +158,56 @@ void main() {
               baseName: 'bool',
               isNullable: true,
             ),
-            name: 'aBool',
-            offset: null),
+            name: 'aBool'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'int',
               isNullable: true,
             ),
-            name: 'aInt',
-            offset: null),
+            name: 'aInt'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'double',
               isNullable: true,
             ),
-            name: 'aDouble',
-            offset: null),
+            name: 'aDouble'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'aString',
-            offset: null),
+            name: 'aString'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'Uint8List',
               isNullable: true,
             ),
-            name: 'aUint8List',
-            offset: null),
+            name: 'aUint8List'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'Int32List',
               isNullable: true,
             ),
-            name: 'aInt32List',
-            offset: null),
+            name: 'aInt32List'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'Int64List',
               isNullable: true,
             ),
-            name: 'aInt64List',
-            offset: null),
+            name: 'aInt64List'),
         NamedType(
             type: const TypeDeclaration(
               baseName: 'Float64List',
               isNullable: true,
             ),
-            name: 'aFloat64List',
-            offset: null),
+            name: 'aFloat64List'),
       ]),
     ], enums: <Enum>[]);
 
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('private @Nullable Boolean aBool;'));
     expect(code, contains('private @Nullable Long aInt;'));
@@ -223,12 +230,10 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -238,8 +243,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -247,15 +251,15 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
-    expect(code, contains('public static class Api'));
+    expect(code, contains('public static final class Api'));
     expect(code, matches('doSomething.*Input.*Output'));
   });
 
@@ -270,11 +274,9 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType: const TypeDeclaration.voidDeclaration(),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -284,13 +286,13 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, isNot(matches('=.*doSomething')));
     expect(code, contains('doSomething('));
@@ -307,11 +309,9 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType: const TypeDeclaration.voidDeclaration(),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -321,13 +321,13 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('Reply<Void>'));
     expect(code, contains('callback.reply(null)'));
@@ -341,7 +341,6 @@ void main() {
           arguments: <NamedType>[],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -351,13 +350,13 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('Output doSomething()'));
     expect(code, contains('api.doSomething()'));
@@ -371,7 +370,6 @@ void main() {
           arguments: <NamedType>[],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[
@@ -381,16 +379,16 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('doSomething(Reply<Output>'));
-    expect(code, contains('channel.send(null'));
+    expect(code, contains(RegExp(r'channel.send\(\s*null')));
   });
 
   test('gen list', () {
@@ -401,15 +399,15 @@ void main() {
               baseName: 'List',
               isNullable: true,
             ),
-            name: 'field1',
-            offset: null)
+            name: 'field1')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
-    expect(code, contains('public static class Foobar'));
+    expect(code, contains('public static final class Foobar'));
     expect(code, contains('private @Nullable List<Object> field1;'));
   });
 
@@ -421,15 +419,15 @@ void main() {
               baseName: 'Map',
               isNullable: true,
             ),
-            name: 'field1',
-            offset: null)
+            name: 'field1')
       ]),
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
-    expect(code, contains('public static class Foobar'));
+    expect(code, contains('public static final class Foobar'));
     expect(code, contains('private @Nullable Map<Object, Object> field1;'));
   });
 
@@ -442,8 +440,7 @@ void main() {
               baseName: 'Nested',
               isNullable: true,
             ),
-            name: 'nested',
-            offset: null)
+            name: 'nested')
       ],
     );
     final Class nestedClass = Class(
@@ -454,8 +451,7 @@ void main() {
               baseName: 'int',
               isNullable: true,
             ),
-            name: 'data',
-            offset: null)
+            name: 'data')
       ],
     );
     final Root root = Root(
@@ -465,16 +461,18 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public class Messages'));
-    expect(code, contains('public static class Outer'));
-    expect(code, contains('public static class Nested'));
+    expect(code, contains('public static final class Outer'));
+    expect(code, contains('public static final class Nested'));
     expect(code, contains('private @Nullable Nested nested;'));
-    expect(code,
-        contains('(nested == null) ? null : Nested.fromMap((Map)nested)'));
-    expect(code,
-        contains('put("nested", (nested == null) ? null : nested.toMap());'));
+    expect(
+        code,
+        contains(
+            '(nested == null) ? null : Nested.fromList((ArrayList<Object>) nested)'));
+    expect(code, contains('add((nested == null) ? null : nested.toList());'));
   });
 
   test('gen one async Host Api', () {
@@ -488,8 +486,7 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: 'arg',
-                offset: null)
+                name: 'arg')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
@@ -503,8 +500,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -512,13 +508,13 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public interface Api'));
     expect(code, contains('public interface Result<T> {'));
@@ -542,8 +538,7 @@ void main() {
                   baseName: 'Input',
                   isNullable: false,
                 ),
-                name: '',
-                offset: null)
+                name: '')
           ],
           returnType:
               const TypeDeclaration(baseName: 'Output', isNullable: false),
@@ -557,8 +552,7 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'input',
-            offset: null)
+            name: 'input')
       ]),
       Class(name: 'Output', fields: <NamedType>[
         NamedType(
@@ -566,24 +560,25 @@ void main() {
               baseName: 'String',
               isNullable: true,
             ),
-            name: 'output',
-            offset: null)
+            name: 'output')
       ])
     ], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
-    expect(code, contains('public static class Api'));
+    expect(code, contains('public static final class Api'));
     expect(code, matches('doSomething.*Input.*Output'));
   });
 
   test('gen one enum class', () {
     final Enum anEnum = Enum(
       name: 'Enum1',
-      members: <String>[
-        'one',
-        'two',
+      members: <EnumMember>[
+        EnumMember(name: 'one'),
+        EnumMember(name: 'twoThreeFour'),
+        EnumMember(name: 'remoteDB'),
       ],
     );
     final Class klass = Class(
@@ -594,8 +589,7 @@ void main() {
               baseName: 'Enum1',
               isNullable: true,
             ),
-            name: 'enum1',
-            offset: null),
+            name: 'enum1'),
       ],
     );
     final Root root = Root(
@@ -605,23 +599,23 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public enum Enum1'));
-    expect(code, contains('    one(0),'));
-    expect(code, contains('    two(1);'));
-    expect(code, contains('private int index;'));
+    expect(code, contains('    ONE(0),'));
+    expect(code, contains('    TWO_THREE_FOUR(1),'));
+    expect(code, contains('    REMOTE_DB(2);'));
+    expect(code, contains('private final int index;'));
     expect(code, contains('private Enum1(final int index) {'));
     expect(code, contains('      this.index = index;'));
 
+    expect(code,
+        contains('toListResult.add(enum1 == null ? null : enum1.index);'));
     expect(
         code,
         contains(
-            'toMapResult.put("enum1", enum1 == null ? null : enum1.index);'));
-    expect(
-        code,
-        contains(
-            'pigeonResult.setEnum1(enum1 == null ? null : Enum1.values()[(int)enum1])'));
+            'pigeonResult.setEnum1(enum1 == null ? null : Enum1.values()[(int) enum1])'));
   });
 
   test('primitive enum host', () {
@@ -638,20 +632,24 @@ void main() {
             ])
       ])
     ], classes: <Class>[], enums: <Enum>[
-      Enum(name: 'Foo', members: <String>['one', 'two'])
+      Enum(name: 'Foo', members: <EnumMember>[
+        EnumMember(name: 'one'),
+        EnumMember(name: 'two'),
+      ])
     ]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('public enum Foo'));
     expect(
         code,
         contains(
-            'Foo fooArg = args.get(0) == null ? null : Foo.values()[(int)args.get(0)];'));
+            'Foo fooArg = args.get(0) == null ? null : Foo.values()[(int) args.get(0)];'));
   });
 
-  Iterable<String> _makeIterable(String string) sync* {
+  Iterable<String> makeIterable(String string) sync* {
     yield string;
   }
 
@@ -660,9 +658,10 @@ void main() {
     final StringBuffer sink = StringBuffer();
     final JavaOptions javaOptions = JavaOptions(
       className: 'Messages',
-      copyrightHeader: _makeIterable('hello world'),
+      copyrightHeader: makeIterable('hello world'),
     );
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, startsWith('// hello world'));
   });
@@ -678,8 +677,7 @@ void main() {
                 typeArguments: <TypeDeclaration>[
                   TypeDeclaration(baseName: 'int', isNullable: true)
                 ]),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -689,7 +687,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('class Foobar'));
     expect(code, contains('List<Long> field1;'));
@@ -707,8 +706,7 @@ void main() {
                   TypeDeclaration(baseName: 'String', isNullable: true),
                   TypeDeclaration(baseName: 'String', isNullable: true),
                 ]),
-            name: 'field1',
-            offset: null),
+            name: 'field1'),
       ],
     );
     final Root root = Root(
@@ -718,7 +716,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('class Foobar'));
     expect(code, contains('Map<String, String> field1;'));
@@ -739,8 +738,7 @@ void main() {
                         typeArguments: <TypeDeclaration>[
                           TypeDeclaration(baseName: 'int', isNullable: true)
                         ]),
-                    name: 'arg',
-                    offset: null)
+                    name: 'arg')
               ])
         ])
       ],
@@ -749,7 +747,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('doit(@NonNull List<Long> arg'));
   });
@@ -769,8 +768,7 @@ void main() {
                         typeArguments: <TypeDeclaration>[
                           TypeDeclaration(baseName: 'int', isNullable: true)
                         ]),
-                    name: 'arg',
-                    offset: null)
+                    name: 'arg')
               ])
         ])
       ],
@@ -779,7 +777,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('doit(@NonNull List<Long> arg'));
   });
@@ -804,7 +803,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('List<Long> doit('));
     expect(code, contains('List<Long> output ='));
@@ -830,10 +830,38 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('doit(Reply<List<Long>> callback)'));
     expect(code, contains('List<Long> output ='));
+  });
+
+  test('flutter int return', () {
+    final Root root = Root(
+      apis: <Api>[
+        Api(name: 'Api', location: ApiLocation.flutter, methods: <Method>[
+          Method(
+              name: 'doit',
+              returnType:
+                  const TypeDeclaration(baseName: 'int', isNullable: false),
+              arguments: <NamedType>[],
+              isAsynchronous: true)
+        ])
+      ],
+      classes: <Class>[],
+      enums: <Enum>[],
+    );
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code, contains('doit(Reply<Long> callback)'));
+    expect(
+        code,
+        contains(
+            'Long output = channelReply == null ? null : ((Number) channelReply).longValue();'));
   });
 
   test('host multiple args', () {
@@ -852,24 +880,47 @@ void main() {
                     const TypeDeclaration(isNullable: false, baseName: 'int')),
           ],
           returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('class Messages'));
     expect(code, contains('Long add(@NonNull Long x, @NonNull Long y)'));
-    expect(
-        code, contains('ArrayList<Object> args = (ArrayList<Object>)message;'));
-    expect(code, contains('Number xArg = (Number)args.get(0)'));
-    expect(code, contains('Number yArg = (Number)args.get(1)'));
+    expect(code,
+        contains('ArrayList<Object> args = (ArrayList<Object>) message;'));
+    expect(code, contains('Number xArg = (Number) args.get(0)'));
+    expect(code, contains('Number yArg = (Number) args.get(1)'));
     expect(
         code,
         contains(
             'Long output = api.add((xArg == null) ? null : xArg.longValue(), (yArg == null) ? null : yArg.longValue())'));
+  });
+
+  test('if host argType is Object not cast', () {
+    final Root root = Root(apis: <Api>[
+      Api(name: 'Api', location: ApiLocation.host, methods: <Method>[
+        Method(
+          name: 'objectTest',
+          arguments: <NamedType>[
+            NamedType(
+                name: 'x',
+                type: const TypeDeclaration(
+                    isNullable: false, baseName: 'Object')),
+          ],
+          returnType: const TypeDeclaration.voidDeclaration(),
+        )
+      ])
+    ], classes: <Class>[], enums: <Enum>[]);
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Api');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code, contains('Object xArg = args.get(0)'));
   });
 
   test('flutter multiple args', () {
@@ -888,13 +939,13 @@ void main() {
                     const TypeDeclaration(isNullable: false, baseName: 'int')),
           ],
           returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
-          isAsynchronous: false,
         )
       ])
     ], classes: <Class>[], enums: <Enum>[]);
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('class Messages'));
     expect(code, contains('BasicMessageChannel<Object> channel'));
@@ -905,8 +956,34 @@ void main() {
             'public void add(@NonNull Long xArg, @NonNull Long yArg, Reply<Long> callback)'));
     expect(
         code,
-        contains(
-            'channel.send(new ArrayList<Object>(Arrays.asList(xArg, yArg)), channelReply ->'));
+        contains(RegExp(
+            r'channel.send\(\s*new ArrayList<Object>\(Arrays.asList\(xArg, yArg\)\),\s*channelReply ->')));
+  });
+
+  test('flutter single args', () {
+    final Root root = Root(apis: <Api>[
+      Api(name: 'Api', location: ApiLocation.flutter, methods: <Method>[
+        Method(
+          name: 'send',
+          arguments: <NamedType>[
+            NamedType(
+                name: 'x',
+                type:
+                    const TypeDeclaration(isNullable: false, baseName: 'int')),
+          ],
+          returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
+        )
+      ])
+    ], classes: <Class>[], enums: <Enum>[]);
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(
+        code,
+        contains(RegExp(
+            r'channel.send\(\s*new ArrayList<Object>\(Collections.singletonList\(xArg\)\),\s*channelReply ->')));
   });
 
   test('return nullable host', () {
@@ -927,9 +1004,10 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
-    expect(code, contains('@Nullable Long doit();'));
+    expect(code, contains(RegExp(r'@Nullable\s*Long doit\(\);')));
   });
 
   test('return nullable host async', () {
@@ -951,7 +1029,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     // Java doesn't accept nullability annotations in type arguments.
     expect(code, contains('Result<Long>'));
@@ -979,7 +1058,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(code, contains('  void doit(@Nullable Long foo);'));
   });
@@ -1006,7 +1086,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(
         code,
@@ -1037,7 +1118,8 @@ void main() {
     );
     final StringBuffer sink = StringBuffer();
     const JavaOptions javaOptions = JavaOptions(className: 'Messages');
-    generateJava(javaOptions, root, sink);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
     final String code = sink.toString();
     expect(
         code,
@@ -1045,7 +1127,213 @@ void main() {
             'BinaryMessenger.TaskQueue taskQueue = binaryMessenger.makeBackgroundTaskQueue();'));
     expect(
         code,
-        contains(
-            'new BasicMessageChannel<>(binaryMessenger, "dev.flutter.pigeon.Api.doit", getCodec(), taskQueue)'));
+        contains(RegExp(
+            r'new BasicMessageChannel<>\(\s*binaryMessenger, "dev.flutter.pigeon.Api.doit", getCodec\(\), taskQueue\)')));
+  });
+
+  test('generated annotation', () {
+    final Class klass = Class(
+      name: 'Foobar',
+      fields: <NamedType>[],
+    );
+    final Root root = Root(
+      apis: <Api>[],
+      classes: <Class>[klass],
+      enums: <Enum>[],
+    );
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions =
+        JavaOptions(className: 'Messages', useGeneratedAnnotation: true);
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code, contains('@javax.annotation.Generated("dev.flutter.pigeon")'));
+  });
+
+  test('no generated annotation', () {
+    final Class klass = Class(
+      name: 'Foobar',
+      fields: <NamedType>[],
+    );
+    final Root root = Root(
+      apis: <Api>[],
+      classes: <Class>[klass],
+      enums: <Enum>[],
+    );
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code,
+        isNot(contains('@javax.annotation.Generated("dev.flutter.pigeon")')));
+  });
+
+  test('transfers documentation comments', () {
+    final List<String> comments = <String>[
+      ' api comment',
+      ' api method comment',
+      ' class comment',
+      ' class field comment',
+      ' enum comment',
+      ' enum member comment',
+    ];
+    int count = 0;
+
+    final List<String> unspacedComments = <String>['////////'];
+    int unspacedCount = 0;
+
+    final Root root = Root(
+      apis: <Api>[
+        Api(
+          name: 'api',
+          location: ApiLocation.flutter,
+          documentationComments: <String>[comments[count++]],
+          methods: <Method>[
+            Method(
+              name: 'method',
+              returnType: const TypeDeclaration.voidDeclaration(),
+              documentationComments: <String>[comments[count++]],
+              arguments: <NamedType>[
+                NamedType(
+                  name: 'field',
+                  type: const TypeDeclaration(
+                    baseName: 'int',
+                    isNullable: true,
+                  ),
+                ),
+              ],
+            )
+          ],
+        )
+      ],
+      classes: <Class>[
+        Class(
+          name: 'class',
+          documentationComments: <String>[comments[count++]],
+          fields: <NamedType>[
+            NamedType(
+              documentationComments: <String>[comments[count++]],
+              type: const TypeDeclaration(
+                  baseName: 'Map',
+                  isNullable: true,
+                  typeArguments: <TypeDeclaration>[
+                    TypeDeclaration(baseName: 'String', isNullable: true),
+                    TypeDeclaration(baseName: 'int', isNullable: true),
+                  ]),
+              name: 'field1',
+            ),
+          ],
+        ),
+      ],
+      enums: <Enum>[
+        Enum(
+          name: 'enum',
+          documentationComments: <String>[
+            comments[count++],
+            unspacedComments[unspacedCount++]
+          ],
+          members: <EnumMember>[
+            EnumMember(
+              name: 'one',
+              documentationComments: <String>[comments[count++]],
+            ),
+            EnumMember(name: 'two'),
+          ],
+        ),
+      ],
+    );
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    for (final String comment in comments) {
+      // This regex finds the comment only between the open and close comment block
+      expect(
+          RegExp(r'(?<=\/\*\*.*?)' + comment + r'(?=.*?\*\/)', dotAll: true)
+              .hasMatch(code),
+          true);
+    }
+    expect(code, isNot(contains('*//')));
+  });
+
+  test('doesnt create codecs if no custom datatypes', () {
+    final Root root = Root(
+      apis: <Api>[
+        Api(
+          name: 'Api',
+          location: ApiLocation.flutter,
+          methods: <Method>[
+            Method(
+              name: 'method',
+              returnType: const TypeDeclaration.voidDeclaration(),
+              arguments: <NamedType>[
+                NamedType(
+                  name: 'field',
+                  type: const TypeDeclaration(
+                    baseName: 'int',
+                    isNullable: true,
+                  ),
+                ),
+              ],
+            )
+          ],
+        )
+      ],
+      classes: <Class>[],
+      enums: <Enum>[],
+    );
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code, isNot(contains(' extends StandardMessageCodec')));
+    expect(code, contains('StandardMessageCodec'));
+  });
+
+  test('creates custom codecs if custom datatypes present', () {
+    final Root root = Root(apis: <Api>[
+      Api(name: 'Api', location: ApiLocation.flutter, methods: <Method>[
+        Method(
+          name: 'doSomething',
+          arguments: <NamedType>[
+            NamedType(
+                type: const TypeDeclaration(
+                  baseName: 'Input',
+                  isNullable: false,
+                ),
+                name: '')
+          ],
+          returnType:
+              const TypeDeclaration(baseName: 'Output', isNullable: false),
+          isAsynchronous: true,
+        )
+      ])
+    ], classes: <Class>[
+      Class(name: 'Input', fields: <NamedType>[
+        NamedType(
+            type: const TypeDeclaration(
+              baseName: 'String',
+              isNullable: true,
+            ),
+            name: 'input')
+      ]),
+      Class(name: 'Output', fields: <NamedType>[
+        NamedType(
+            type: const TypeDeclaration(
+              baseName: 'String',
+              isNullable: true,
+            ),
+            name: 'output')
+      ])
+    ], enums: <Enum>[]);
+    final StringBuffer sink = StringBuffer();
+    const JavaOptions javaOptions = JavaOptions(className: 'Messages');
+    const JavaGenerator generator = JavaGenerator();
+    generator.generate(javaOptions, root, sink);
+    final String code = sink.toString();
+    expect(code, contains(' extends StandardMessageCodec'));
   });
 }

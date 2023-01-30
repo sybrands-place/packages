@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import 'utils.dart';
 
 void main() => defineTests();
@@ -628,7 +629,13 @@ void defineTests() {
         );
 
         expectValidLink('link');
-        expectLinkTap(linkTapResults, const MarkdownLink('link', 'foo\bar'));
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectLinkTap(linkTapResults, const MarkdownLink('link', 'foo\bar'));
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectLinkTap(linkTapResults, const MarkdownLink('link', 'foo%08ar'));
+        }
       },
     );
 
@@ -649,8 +656,15 @@ void defineTests() {
         );
 
         expectValidLink('link');
-        expectLinkTap(
-            linkTapResults, const MarkdownLink('link', 'foo%20b&auml;'));
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectLinkTap(
+              linkTapResults, const MarkdownLink('link', 'foo%20b&auml;'));
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectLinkTap(
+              linkTapResults, const MarkdownLink('link', 'foo%20b%C3%A4'));
+        }
       },
     );
 
@@ -702,7 +716,7 @@ void defineTests() {
       // Example 513b from GFM.
       'link title in single quotes',
       (WidgetTester tester) async {
-        const String data = '[link](/url \'title\')';
+        const String data = "[link](/url 'title')";
         MarkdownLink? linkTapResults;
         await tester.pumpWidget(
           boilerplate(
@@ -759,8 +773,15 @@ void defineTests() {
         );
 
         expectValidLink('link');
-        expectLinkTap(linkTapResults,
-            const MarkdownLink('link', '/url', 'title %22&quot;'));
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectLinkTap(linkTapResults,
+              const MarkdownLink('link', '/url', 'title %22&quot;'));
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectLinkTap(linkTapResults,
+              const MarkdownLink('link', '/url', 'title &quot;&quot;'));
+        }
       },
     );
 
@@ -781,8 +802,15 @@ void defineTests() {
         );
 
         expectValidLink('link');
-        expectLinkTap(linkTapResults,
-            const MarkdownLink('link', '/url\u{C2A0}%22title%22'));
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectLinkTap(linkTapResults,
+              const MarkdownLink('link', '/url\u{C2A0}%22title%22'));
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectLinkTap(linkTapResults,
+              const MarkdownLink('link', '/url%EC%8A%A0%22title%22'));
+        }
       },
     );
 
@@ -825,8 +853,17 @@ void defineTests() {
         );
 
         expectValidLink('link');
-        expectLinkTap(linkTapResults,
-            const MarkdownLink('link', '/url', 'title %22and%22 title'));
+        if (!newMarkdown) {
+          // For pkg:markdown <= v6.0.1
+          expectLinkTap(linkTapResults,
+              const MarkdownLink('link', '/url', 'title %22and%22 title'));
+        } else {
+          // For pkg:markdown > v6.0.1
+          expectLinkTap(
+            linkTapResults,
+            const MarkdownLink('link', '/url', 'title &quot;and&quot; title'),
+          );
+        }
       },
     );
 
@@ -1202,7 +1239,7 @@ void defineTests() {
 
     testWidgets(
       // Example 531 from GFM.
-      'brackets that aren\'t part of links do not take precedence',
+      "brackets that aren't part of links do not take precedence",
       (WidgetTester tester) async {
         const String data = '*foo [bar* baz]';
         await tester.pumpWidget(

@@ -3,30 +3,22 @@ description: go_router_builder examples
 publish_to: none
 
 environment:
-  sdk: ">=2.14.0 <3.0.0"
+  sdk: ">=2.17.0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  # Uses path dependency override
-  go_router: any
-  provider: ^5.0.0
+  go_router: ^6.0.0
+  provider: ^6.0.0
 
 dev_dependencies:
-  all_lint_rules_community: ^0.0.4
   build_runner: ^2.0.0
-  build_verify: ^3.0.0
+  build_verify: ^3.1.0
   flutter_test:
     sdk: flutter
-  # Uses path dependency override
   go_router_builder:
+    path: ..
   test: ^1.17.0
 
 flutter:
   uses-material-design: true
-
-dependency_overrides:
-  go_router:
-    path: ../../go_router
-  go_router_builder:
-    path: ../

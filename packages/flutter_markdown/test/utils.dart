@@ -9,11 +9,25 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:markdown/markdown.dart' as md show version;
 
-final TextTheme textTheme =
-    Typography.material2018(platform: TargetPlatform.android)
-        .black
-        .merge(const TextTheme(bodyText2: TextStyle(fontSize: 12.0)));
+// TODO(Zhiguang): delete this once the min version of pkg:markdown is updated
+final bool newMarkdown = md.version.compareTo('6.0.1') > 0;
+
+final TextTheme textTheme = Typography.material2018()
+    .black
+    .merge(const TextTheme(bodyMedium: TextStyle(fontSize: 12.0)));
+
+Iterable<Widget> selfAndDescendantWidgetsOf(Finder start, WidgetTester tester) {
+  final Element startElement = tester.element(start);
+  final Iterable<Widget> descendants =
+      collectAllElementsFrom(startElement, skipOffstage: false)
+          .map((Element e) => e.widget);
+  return <Widget>[
+    startElement.widget,
+    ...descendants,
+  ];
+}
 
 void expectWidgetTypes(Iterable<Widget> widgets, List<Type> expected) {
   final List<Type> actual = widgets.map((Widget w) => w.runtimeType).toList();
@@ -182,7 +196,7 @@ class TestAssetBundle extends CachingAssetBundle {
       // verses 'flutter test test/*_test.dart'. Adjust the root directory
       // to access the assets directory.
       final io.Directory rootDirectory =
-          io.Directory.current.path.endsWith(io.Platform.pathSeparator + 'test')
+          io.Directory.current.path.endsWith('${io.Platform.pathSeparator}test')
               ? io.Directory.current.parent
               : io.Directory.current;
       final io.File file =
@@ -194,7 +208,7 @@ class TestAssetBundle extends CachingAssetBundle {
       }
       return asset;
     } else {
-      throw 'Unknown asset key: $key';
+      throw ArgumentError('Unknown asset key: $key');
     }
   }
 }

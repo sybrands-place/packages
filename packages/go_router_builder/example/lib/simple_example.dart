@@ -14,7 +14,7 @@ part 'simple_example.g.dart';
 void main() => runApp(App());
 
 class App extends StatelessWidget {
-  App({Key? key}) : super(key: key);
+  App({super.key});
 
   @override
   Widget build(BuildContext context) => MaterialApp.router(
@@ -36,7 +36,7 @@ class HomeRoute extends GoRouteData {
   const HomeRoute();
 
   @override
-  Widget build(BuildContext context) => const HomeScreen();
+  Widget build(BuildContext context, GoRouterState state) => const HomeScreen();
 }
 
 class FamilyRoute extends GoRouteData {
@@ -45,12 +45,12 @@ class FamilyRoute extends GoRouteData {
   final String familyId;
 
   @override
-  Widget build(BuildContext context) =>
+  Widget build(BuildContext context, GoRouterState state) =>
       FamilyScreen(family: familyById(familyId));
 }
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
 }
 
 class FamilyScreen extends StatelessWidget {
-  const FamilyScreen({required this.family, Key? key}) : super(key: key);
+  const FamilyScreen({required this.family, super.key});
   final Family family;
 
   @override
