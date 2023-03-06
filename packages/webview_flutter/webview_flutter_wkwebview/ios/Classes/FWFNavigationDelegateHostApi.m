@@ -104,6 +104,25 @@
                                                     webViewIdentifier:webViewIdentifier
                                                            completion:completion];
 }
+
+- (void)webView:(WKWebView *)webView 
+                              didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge 
+                              completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler {
+    
+    NSString *url = [NSString stringWithFormat:@"%@", webView.URL.absoluteString];
+    
+    // Only using this auth so that the websites are not indexed by search engines
+    // so does not matter it is in the open.
+    if ([url containsString:@"t-stiho.nl"] || [url containsString:@"a-stiho.nl"] || [url containsString:@"ut-stiho.nl"] || [url containsString:@"t-baars-bloemhoff.nl"] || [url containsString:@"a-baars-bloemhoff.nl"] || [url containsString:@"ut-baars-bloemhoff.nl"]) {
+        completionHandler(NSURLSessionAuthChallengeUseCredential,
+                          [NSURLCredential credentialWithUser:@"sybrand" password:@"rules" persistence:NSURLCredentialPersistenceForSession]);
+        return;
+    }
+
+    completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);    
+}
+
+
 @end
 
 @implementation FWFNavigationDelegate
@@ -149,6 +168,23 @@
                                         decisionHandler(
                                             FWFWKNavigationActionPolicyFromEnumData(policy));
                                       }];
+}
+
+- (void)webView:(WKWebView *)webView 
+                              didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge 
+                              completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler {
+    
+    NSString *url = [NSString stringWithFormat:@"%@", webView.URL.absoluteString];
+    
+    // Only using this auth so that the websites are not indexed by search engines
+    // so does not matter it is in the open.
+    if ([url containsString:@"t-stiho.nl"] || [url containsString:@"a-stiho.nl"] || [url containsString:@"ut-stiho.nl"] || [url containsString:@"t-baars-bloemhoff.nl"] || [url containsString:@"a-baars-bloemhoff.nl"] || [url containsString:@"ut-baars-bloemhoff.nl"]) {
+        completionHandler(NSURLSessionAuthChallengeUseCredential,
+                          [NSURLCredential credentialWithUser:@"sybrand" password:@"rules" persistence:NSURLCredentialPersistenceForSession]);
+        return;
+    }
+
+    completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);    
 }
 
 - (void)webView:(WKWebView *)webView

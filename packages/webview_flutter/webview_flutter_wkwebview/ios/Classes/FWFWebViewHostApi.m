@@ -117,6 +117,10 @@
                                             configuration:configuration
                                           binaryMessenger:self.binaryMessenger
                                           instanceManager:self.instanceManager];
+  if (@available(iOS 9.0, *)) {
+    webView.allowsLinkPreview = NO;
+  }
+
   [self.instanceManager addDartCreatedInstance:webView withIdentifier:identifier.longValue];
 }
 
