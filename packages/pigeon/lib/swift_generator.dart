@@ -171,7 +171,7 @@ import FlutterMacOS
     Set<String> customEnumNames,
   ) {
     final String className = klass.name;
-    indent.write('static func fromList(_ list: [Any?]) -> $className? ');
+    indent.write('static func fromList(_ list: [Any]) -> $className? ');
 
     indent.addScoped('{', '}', () {
       enumerate(getFieldsInSerializationOrder(klass),
@@ -185,27 +185,27 @@ import FlutterMacOS
           if (!hostDatatype.isBuiltin &&
               customClassNames.contains(field.type.baseName)) {
             indent.writeln('var ${field.name}: $fieldType? = nil');
-            indent.write('if let ${field.name}List = $listValue as? [Any?] ');
+            indent.write('if let ${field.name}List = $listValue as! [Any]? ');
             indent.addScoped('{', '}', () {
               indent.writeln(
-                  '${field.name} = $fieldType.fromList(${field.name}List)');
+                  '${field.name} = $fieldType.fromList(${field.name}List as [Any])');
             });
           } else if (!hostDatatype.isBuiltin &&
               customEnumNames.contains(field.type.baseName)) {
             indent.writeln('var ${field.name}: $fieldType? = nil');
-            indent.write('if let ${field.name}RawValue = $listValue as? Int ');
+            indent.write('if let ${field.name}RawValue = $listValue as! Int? ');
             indent.addScoped('{', '}', () {
               indent.writeln(
                   '${field.name} = $fieldType(rawValue: ${field.name}RawValue)');
             });
           } else {
-            indent.writeln('let ${field.name} = $listValue as? $fieldType ');
+            indent.writeln('let ${field.name} = $listValue as! $fieldType? ');
           }
         } else {
           if (!hostDatatype.isBuiltin &&
               customClassNames.contains(field.type.baseName)) {
             indent.writeln(
-                'let ${field.name} = $fieldType.fromList($listValue as! [Any?])!');
+                'let ${field.name} = $fieldType.fromList($listValue as! [Any])!');
           } else if (!hostDatatype.isBuiltin &&
               customEnumNames.contains(field.type.baseName)) {
             indent.writeln(
@@ -395,13 +395,18 @@ import FlutterMacOS
         }).toList();
 
         final String returnType = method.returnType.isVoid
-            ? ''
+            ? 'Void'
             : _nullsafeSwiftTypeForDartType(method.returnType);
+
+        final String escapeType =
+            method.returnType.isVoid ? 'Void' : returnType;
+
         addDocumentationComments(
             indent, method.documentationComments, _docCommentSpec);
 
         if (method.isAsynchronous) {
-          argSignature.add('completion: @escaping ($returnType) -> Void');
+          argSignature.add(
+              'completion: @escaping (Result<$escapeType, Error>) -> Void');
           indent.writeln('func ${components.name}(${argSignature.join(', ')})');
         } else if (method.returnType.isVoid) {
           indent.writeln(
@@ -470,16 +475,25 @@ import FlutterMacOS
               final String call =
                   '${tryStatement}api.${components.name}(${methodArgument.join(', ')})';
               if (method.isAsynchronous) {
+                final String resultName =
+                    method.returnType.isVoid ? 'nil' : 'res';
+                final String successVariableInit =
+                    method.returnType.isVoid ? '' : '(let res)';
                 indent.write('$call ');
-                if (method.returnType.isVoid) {
+
+                indent.addScoped('{ result in', '}', () {
+                  indent.write('switch result ');
                   indent.addScoped('{', '}', () {
-                    indent.writeln('reply(wrapResult(nil))');
+                    indent.writeln('case .success$successVariableInit:');
+                    indent.nest(1, () {
+                      indent.writeln('reply(wrapResult($resultName))');
+                    });
+                    indent.writeln('case .failure(let error):');
+                    indent.nest(1, () {
+                      indent.writeln('reply(wrapError(error))');
+                    });
                   });
-                } else {
-                  indent.addScoped('{ result in', '}', () {
-                    indent.writeln('reply(wrapResult(result))');
-                  });
-                }
+                });
               } else {
                 indent.write('do ');
                 indent.addScoped('{', '}', () {
@@ -677,9 +691,9 @@ String _flattenTypeArguments(List<TypeDeclaration> args) {
 String _swiftTypeForBuiltinGenericDartType(TypeDeclaration type) {
   if (type.typeArguments.isEmpty) {
     if (type.baseName == 'List') {
-      return '[Any?]';
+      return '[Any]';
     } else if (type.baseName == 'Map') {
-      return '[AnyHashable: Any?]';
+      return '[AnyHashable: Any]';
     } else {
       return 'Any';
     }

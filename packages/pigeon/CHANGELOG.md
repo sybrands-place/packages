@@ -1,3 +1,54 @@
+## NEXT
+
+* Aligns Dart and Flutter SDK constraints.
+
+## 9.0.4
+
+* Adds parameter to generate Kotlin code in example README.
+
+## 9.0.3
+
+* [kotlin] Fixes compiler warnings in generated output.
+* [swift] Fixes compiler warnings in generated output.
+
+## 9.0.2
+
+* [swift] Removes safe casting from decode process.
+* [kotlin] Removes safe casting from decode process.
+
+## 9.0.1
+
+* Updates links for the merge of flutter/plugins into flutter/packages.
+
+## 9.0.0
+
+* **Breaking Change** Updates `DartOptions` to be immutable and adds const to the constructor.
+* [java] Reverts `final` changes to Flutter Api classes.
+
+## 8.0.0
+
+* [objc] **BREAKING CHANGE**: FlutterApi calls now return a `FlutterError`,
+  rather than an `NSError`, on failure.
+* [objc] Fixes an unused function warning when only generating FlutterApi.
+
+## 7.2.1
+
+* [kotlin] Fixes Flutter api int errors with updated casting.
+
+## 7.2.0
+
+* [swift] Changes async method completion types.
+  May require code updates to existing code.
+* [swift] Adds error handling to async methods.
+* [kotlin] Changes async method completion types.
+  May require code updates to existing code.
+* [kotlin] Adds error handling to async methods.
+* Adds async error handling integration tests for all platforms.
+
+## 7.1.5
+
+* Updates code to fix strict-cast violations.
+
 ## 7.1.4
 
 * [java] Fixes raw types lint issues.
