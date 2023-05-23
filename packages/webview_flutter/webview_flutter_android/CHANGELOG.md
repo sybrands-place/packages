@@ -1,3 +1,12 @@
+## 3.7.1
+
+* Removes obsolete null checks on non-nullable values.
+
+## 3.7.0
+
+* Adds support to accept third party cookies. See
+  `AndroidWebViewCookieManager.setAcceptThirdPartyCookies`.
+
 ## 3.6.3
 
 * Updates gradle, AGP and fixes some lint errors.

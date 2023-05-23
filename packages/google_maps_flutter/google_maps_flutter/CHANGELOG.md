@@ -1,6 +1,12 @@
-## NEXT
+## 2.2.7
+
+* Removes obsolete null checks on non-nullable values.
+* Updates minimum supported SDK version to Flutter 3.3/Dart 2.18.
+
+## 2.2.6
 
 * Aligns Dart and Flutter SDK constraints.
+* Updates README.md to specify not to use GoogleMaps widget within an unbounded widget.
 
 ## 2.2.5
 
