@@ -1,3 +1,21 @@
+## 0.10.8+6
+
+* Migrates `styleFrom` usage in examples off of deprecated `primary` and `onPrimary` parameters.
+
+## 0.10.8+5
+
+* Provides a default exposure point if null.
+
+## 0.10.8+4
+
+* Adjusts SDK checks for better testability.
+
+## 0.10.8+3
+
+* Fixes unawaited_futures violations.
+* Removes duplicate line in `MediaRecorderBuilder.java`.
+* Adds support for concurrently capturing images and image streaming/recording.
+
 ## 0.10.8+2
 
 * Removes obsolete null checks on non-nullable values.

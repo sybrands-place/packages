@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:go_router/src/match.dart';
 
 Future<GoRouter> createGoRouter(WidgetTester tester) async {
   final GoRouter goRouter = GoRouter(
@@ -149,18 +148,20 @@ Future<GoRouter> createRouter(
   GlobalKey<NavigatorState>? navigatorKey,
   GoRouterWidgetBuilder? errorBuilder,
   String? restorationScopeId,
+  GoExceptionHandler? onException,
+  bool requestFocus = true,
 }) async {
   final GoRouter goRouter = GoRouter(
     routes: routes,
     redirect: redirect,
     initialLocation: initialLocation,
+    onException: onException,
     initialExtra: initialExtra,
     redirectLimit: redirectLimit,
-    errorBuilder: errorBuilder ??
-        (BuildContext context, GoRouterState state) =>
-            TestErrorScreen(state.error!),
+    errorBuilder: errorBuilder,
     navigatorKey: navigatorKey,
     restorationScopeId: restorationScopeId,
+    requestFocus: requestFocus,
   );
   await tester.pumpWidget(
     MaterialApp.router(
@@ -301,8 +302,6 @@ RouteMatch createRouteMatch(RouteBase route, String location) {
   return RouteMatch(
     route: route,
     matchedLocation: location,
-    extra: null,
-    error: null,
     pageKey: ValueKey<String>(location),
   );
 }

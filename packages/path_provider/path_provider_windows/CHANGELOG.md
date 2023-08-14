@@ -1,5 +1,10 @@
-## NEXT
+## 2.2.0
 
+* Adds getApplicationCachePath() for storing app-specific cache files.
+
+## 2.1.7
+
+* Adds compatibility with `win32` 5.x.
 * Updates minimum supported SDK version to Flutter 3.3/Dart 2.18.
 
 ## 2.1.6

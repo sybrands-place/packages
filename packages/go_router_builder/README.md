@@ -8,12 +8,12 @@ To use `go_router_builder`, you need to have the following dependencies in
 ```yaml
 dependencies:
   # ...along with your other dependencies
-  go_router: ^7.0.0
+  go_router: ^9.0.3
 
 dev_dependencies:
   # ...along with your other dev-dependencies
   build_runner: ^2.0.0
-  go_router_builder: ^2.0.0
+  go_router_builder: ^2.3.0
 ```
 
 ### Source code
@@ -88,9 +88,6 @@ class HomeRoute extends GoRouteData {
   Widget build(BuildContext context, GoRouterState state) => const HomeScreen();
 }
 ```
-
-Required parameters are pulled from the route's `path` defined in the route
-tree.
 
 ## Route tree
 
@@ -178,9 +175,10 @@ void _tap() async {
 
 ## Query parameters
 
-Optional parameters (named or positional) indicate query parameters:
+Parameters (named or positional) not listed in the path of `TypedGoRoute` indicate query parameters:
 
 ```dart
+@TypedGoRoute(path: '/login')
 class LoginRoute extends GoRouteData {
   LoginRoute({this.from});
   final String? from;
@@ -195,6 +193,7 @@ class LoginRoute extends GoRouteData {
 For query parameters with a **non-nullable** type, you can define a default value:
 
 ```dart
+@TypedGoRoute(path: '/my-route')
 class MyRoute extends GoRouteData {
   MyRoute({this.queryParameter = 'defaultValue'});
   final String queryParameter;
@@ -237,6 +236,7 @@ recommended when targeting Flutter web.
 You can, of course, combine the use of path, query and $extra parameters:
 
 ```dart
+@TypedGoRoute<HotdogRouteWithEverything>(path: '/:ketchup')
 class HotdogRouteWithEverything extends GoRouteData {
   HotdogRouteWithEverything(this.ketchup, this.mustard, this.$extra);
   final bool ketchup; // required path parameter
@@ -379,3 +379,9 @@ class MyGoRouteData extends GoRouteData {
 ```
 
 An example is available [here](https://github.com/flutter/packages/blob/main/packages/go_router_builder/example/lib/shell_route_with_keys_example.dart).
+
+## Run tests
+
+To run unit tests, run command `dart tool/run_tests.dart` from `packages/go_router_builder/`.
+
+To run tests in examples, run `flutter test` from `packages/go_router_builder/example`.
