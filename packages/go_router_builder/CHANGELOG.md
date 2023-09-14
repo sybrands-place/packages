@@ -1,3 +1,12 @@
+## 2.3.2
+
+* Supports the latest `package:analyzer`.
+
+## 2.3.1
+
+* Adds pub topics to package metadata.
+* Updates minimum supported SDK version to Flutter 3.7/Dart 2.19.
+
 ## 2.3.0
 
 * Adds Support for StatefulShellRoute
