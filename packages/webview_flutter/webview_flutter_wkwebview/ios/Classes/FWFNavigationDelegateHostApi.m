@@ -4,9 +4,13 @@
 
 #import "FWFNavigationDelegateHostApi.h"
 #import "FWFDataConverters.h"
+#import "FWFURLAuthenticationChallengeHostApi.h"
 #import "FWFWebViewConfigurationHostApi.h"
 
 @interface FWFNavigationDelegateFlutterApiImpl ()
+// BinaryMessenger must be weak to prevent a circular reference with the host API it
+// references.
+@property(nonatomic, weak) id<FlutterBinaryMessenger> binaryMessenger;
 // InstanceManager must be weak to prevent a circular reference with the object it stores.
 @property(nonatomic, weak) FWFInstanceManager *instanceManager;
 @end
@@ -16,6 +20,7 @@
                         instanceManager:(FWFInstanceManager *)instanceManager {
   self = [self initWithBinaryMessenger:binaryMessenger];
   if (self) {
+    _binaryMessenger = binaryMessenger;
     _instanceManager = instanceManager;
   }
   return self;
@@ -103,24 +108,36 @@
                                                            completion:completion];
 }
 
-- (void)webView:(WKWebView *)webView 
-                              didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge 
-                              completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler {
-    
-    NSString *url = [NSString stringWithFormat:@"%@", webView.URL.absoluteString];
-    
-    // Only using this auth so that the websites are not indexed by search engines
-    // so does not matter it is in the open.
-    if ([url containsString:@"t-stiho.nl"] || [url containsString:@"a-stiho.nl"] || [url containsString:@"ut-stiho.nl"] || [url containsString:@"t-baars-bloemhoff.nl"] || [url containsString:@"a-baars-bloemhoff.nl"] || [url containsString:@"ut-baars-bloemhoff.nl"]) {
-        completionHandler(NSURLSessionAuthChallengeUseCredential,
-                          [NSURLCredential credentialWithUser:@"sybrand" password:@"rules" persistence:NSURLCredentialPersistenceForSession]);
-        return;
-    }
+- (void)
+    didReceiveAuthenticationChallengeForDelegate:(FWFNavigationDelegate *)instance
+                                         webView:(WKWebView *)webView
+                                       challenge:(NSURLAuthenticationChallenge *)challenge
+                                      completion:
+                                          (void (^)(FWFAuthenticationChallengeResponse *_Nullable,
+                                                    FlutterError *_Nullable))completion {
+  NSInteger webViewIdentifier =
+      [self.instanceManager identifierWithStrongReferenceForInstance:webView];
 
-    completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);    
+  FWFURLAuthenticationChallengeFlutterApiImpl *challengeApi =
+      [[FWFURLAuthenticationChallengeFlutterApiImpl alloc]
+          initWithBinaryMessenger:self.binaryMessenger
+                  instanceManager:self.instanceManager];
+  [challengeApi createWithInstance:challenge
+                   protectionSpace:challenge.protectionSpace
+                        completion:^(FlutterError *error) {
+                          NSAssert(!error, @"%@", error);
+                        }];
+
+  [self
+      didReceiveAuthenticationChallengeForDelegateWithIdentifier:[self
+                                                                     identifierForDelegate:instance]
+                                               webViewIdentifier:webViewIdentifier
+                                             challengeIdentifier:
+                                                 [self.instanceManager
+                                                     identifierWithStrongReferenceForInstance:
+                                                         challenge]
+                                                      completion:completion];
 }
-
-
 @end
 
 @implementation FWFNavigationDelegate
@@ -163,26 +180,14 @@
                                       completion:^(FWFWKNavigationActionPolicyEnumData *policy,
                                                    FlutterError *error) {
                                         NSAssert(!error, @"%@", error);
-                                        decisionHandler(
-                                            FWFNativeWKNavigationActionPolicyFromEnumData(policy));
+                                        if (!error) {
+                                          decisionHandler(
+                                              FWFNativeWKNavigationActionPolicyFromEnumData(
+                                                  policy));
+                                        } else {
+                                          decisionHandler(WKNavigationActionPolicyCancel);
+                                        }
                                       }];
-}
-
-- (void)webView:(WKWebView *)webView 
-                              didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge 
-                              completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential * _Nullable))completionHandler {
-    
-    NSString *url = [NSString stringWithFormat:@"%@", webView.URL.absoluteString];
-    
-    // Only using this auth so that the websites are not indexed by search engines
-    // so does not matter it is in the open.
-    if ([url containsString:@"t-stiho.nl"] || [url containsString:@"a-stiho.nl"] || [url containsString:@"ut-stiho.nl"] || [url containsString:@"t-baars-bloemhoff.nl"] || [url containsString:@"a-baars-bloemhoff.nl"] || [url containsString:@"ut-baars-bloemhoff.nl"]) {
-        completionHandler(NSURLSessionAuthChallengeUseCredential,
-                          [NSURLCredential credentialWithUser:@"sybrand" password:@"rules" persistence:NSURLCredentialPersistenceForSession]);
-        return;
-    }
-
-    completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);    
 }
 
 - (void)webView:(WKWebView *)webView
@@ -214,6 +219,40 @@
                                            completion:^(FlutterError *error) {
                                              NSAssert(!error, @"%@", error);
                                            }];
+}
+
+- (void)webView:(WKWebView *)webView
+    didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+                    completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition,
+                                                NSURLCredential *_Nullable))completionHandler {
+  [self.navigationDelegateAPI
+      didReceiveAuthenticationChallengeForDelegate:self
+                                           webView:webView
+                                         challenge:challenge
+                                        completion:^(FWFAuthenticationChallengeResponse *response,
+                                                     FlutterError *error) {
+                                          NSAssert(!error, @"%@", error);
+                                          if (!error) {
+                                            NSURLSessionAuthChallengeDisposition disposition =
+                                                FWFNativeNSURLSessionAuthChallengeDispositionFromFWFNSUrlSessionAuthChallengeDisposition(
+                                                    response.disposition);
+
+                                            NSURLCredential *credential =
+                                                response.credentialIdentifier
+                                                    ? (NSURLCredential *)[self.navigationDelegateAPI
+                                                                              .instanceManager
+                                                          instanceForIdentifier:
+                                                              response.credentialIdentifier
+                                                                  .longValue]
+                                                    : nil;
+
+                                            completionHandler(disposition, credential);
+                                          } else {
+                                            completionHandler(
+                                                NSURLSessionAuthChallengeCancelAuthenticationChallenge,
+                                                nil);
+                                          }
+                                        }];
 }
 @end
 

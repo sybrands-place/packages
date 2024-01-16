@@ -1,3 +1,16 @@
+## 6.2.4
+
+* Adds privacy manifest.
+
+## 6.2.3
+
+* Updates minimum required plugin_platform_interface version to 2.1.7.
+
+## 6.2.2
+
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+* Fixes lint warnings.
+
 ## 6.2.1
 
 * Migrates plugin from Objective-C to Swift.

@@ -1,3 +1,8 @@
+## 2.3.2
+
+* Adds privacy manifest.
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+
 ## 2.3.1
 
 * Adds pub topics to package metadata.

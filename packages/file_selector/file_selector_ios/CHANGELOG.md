@@ -1,3 +1,8 @@
+## 0.5.1+8
+
+* Adds privacy manifest.
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+
 ## 0.5.1+7
 
 * Updates to Pigeon 13.
